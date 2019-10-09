@@ -126,6 +126,9 @@ pc.defineParameter("sharedVlanAddress","Shared VLAN IP Address",
 pc.defineParameter("computeNodeCountSite2", "Number of compute nodes at Site 2",
                    portal.ParameterType.INTEGER, 0,advanced=True,
                    longDescription="You can add additional compute nodes from other CloudLab clusters, allowing you to experiment with remote VMs controlled from the central controller at the first site.")
+pc.defineParameter("osNodeTypeSite2", "Site 2 Hardware Type",
+                   portal.ParameterType.NODETYPE, "",
+                   longDescription="A specific hardware type to use for each node at Site 2.  Cloudlab clusters all have machines of specific types.  When you set this field to a value that is a specific hardware type, you will only be able to instantiate this profile on clusters with machines of that type.  If unset, when you instantiate the profile, the resulting experiment may have machines of any available type allocated.")
 
 pc.defineParameter("resizeRoot","Resize Root Filesystem",
                    portal.ParameterType.STRING,"",advanced=True,
@@ -908,9 +911,10 @@ for (siteNumber,cpnameList) in computeNodeNamesBySite.iteritems():
     for cpname in cpnameList:
         cpnode = RSpec.RawPC(cpname)
         nodes[cpname] = cpnode
-        if params.osNodeType:
+        if params.osNodeType and siteNumber == 1:
             cpnode.hardware_type = params.osNodeType
-        pass
+        elif params.osNodeTypeSite2 and siteNumber == 2:
+            cpnode.hardware_type = params.osNodeTypeSite2
         cpnode.Site(str(siteNumber))
         if params.computeDiskImage:
             cpnode.disk_image = params.computeDiskImage
