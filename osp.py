@@ -128,7 +128,8 @@ pc.defineParameter("computeNodeCountSite2", "Number of compute nodes at Site 2",
                    longDescription="You can add additional compute nodes from other CloudLab clusters, allowing you to experiment with remote VMs controlled from the central controller at the first site.")
 pc.defineParameter("osNodeTypeSite2", "Site 2 Hardware Type",
                    portal.ParameterType.NODETYPE, "",
-                   longDescription="A specific hardware type to use for each node at Site 2.  Cloudlab clusters all have machines of specific types.  When you set this field to a value that is a specific hardware type, you will only be able to instantiate this profile on clusters with machines of that type.  If unset, when you instantiate the profile, the resulting experiment may have machines of any available type allocated.")
+                   longDescription="A specific hardware type to use for each node at Site 2.  Cloudlab clusters all have machines of specific types.  When you set this field to a value that is a specific hardware type, you will only be able to instantiate this profile on clusters with machines of that type.  If unset, when you instantiate the profile, the resulting experiment may have machines of any available type allocated.",
+                   advanced=True)
 
 pc.defineParameter("resizeRoot","Resize Root Filesystem",
                    portal.ParameterType.STRING,"",advanced=True,
