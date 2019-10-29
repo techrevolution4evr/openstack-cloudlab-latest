@@ -1230,7 +1230,7 @@ EOF
     #
     # https://docs.openstack.org/nova/rocky/configuration/config.html#workarounds.enable_consoleauth
     if [ $OSVERSION -ge $OSROCKY ]; then
-	crudini --set /etc/nova/nova.conf workarounds enable_consoleauth
+	crudini --set /etc/nova/nova.conf workarounds enable_consoleauth true
     fi
 
     #
