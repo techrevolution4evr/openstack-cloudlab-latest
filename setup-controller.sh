@@ -1225,6 +1225,13 @@ EOF
 	crudini --set /etc/nova/nova.conf vnc server_listen ${MGMTIP}
 	crudini --set /etc/nova/nova.conf vnc server_proxyclient_address ${MGMTIP}
     fi
+    #
+    # consoleauth is being deprecated as of Rocky.
+    #
+    # https://docs.openstack.org/nova/rocky/configuration/config.html#workarounds.enable_consoleauth
+    if [ $OSVERSION -ge $OSROCKY ]; then
+	crudini --set /etc/nova/nova.conf workarounds enable_consoleauth
+    fi
 
     #
     # Apparently on Kilo and before, the default filters did not include
