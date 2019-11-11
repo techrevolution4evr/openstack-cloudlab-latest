@@ -382,9 +382,10 @@ if [ -z "${KEYSTONE_DBPASS}" ]; then
     echo "grant all privileges on keystone.* to 'keystone'@'%' identified by '$KEYSTONE_DBPASS'" | mysql -u root --password="$DB_ROOT_PASS"
 
     maybe_install_packages keystone python-keystoneclient
-    if [ $OSVERSION -ge $OSKILO ]; then
+    if [ $OSVERSION -ge $OSKILO -o $KEYSTONEUSEWSGI -eq 1 ]; then
 	maybe_install_packages apache2
 	maybe_install_packages libapache2-mod-wsgi
+	a2enmod wsgi
     fi
 
     ADMIN_TOKEN=`$PSWDGEN`
