@@ -559,6 +559,8 @@ EOF
 
 	ln -s /etc/apache2/sites-available/wsgi-keystone.conf \
 	    /etc/apache2/sites-enabled
+    else
+	a2ensite keystone
     fi
 
     if [ $OSVERSION -le $OSJUNO -o $KEYSTONEUSEWSGI -eq 0 ]; then
