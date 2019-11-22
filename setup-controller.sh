@@ -3531,9 +3531,9 @@ if [ $OSVERSION -ge $OSPIKE -a -z "${TELEMETRY_GRAFANA_DONE}" ]; then
     service_restart grafana-server
     # Try an initial password reset to force the DB schema to be populated;
     # apparently just starting grafana-server doesn't do that.
-    grafana-cli admin reset-admin-password \
-        --config /etc/grafana/grafana.ini --homepath /usr/share/grafana \
-	"$GPASSWD"
+    grafana-cli \
+	--config /etc/grafana/grafana.ini --homepath /usr/share/grafana \
+	admin reset-admin-password "$GPASSWD"
     service_restart grafana-server
 
     #
@@ -3554,9 +3554,9 @@ if [ $OSVERSION -ge $OSPIKE -a -z "${TELEMETRY_GRAFANA_DONE}" ]; then
 	echo "REPLACE INTO \"user\" VALUES(1,0,'admin','admin@localhost','','38d481956ebbb14985a42acd18859630008cf879076492971a80d7d782a5e8149f87b19f706fc8c98a7329ee4e67c6802f11','knT2WLp6iP','WzhsbIERTc',1,1,1,0,'',datetime('now'),datetime('now'),1,datetime('now'));" | sqlite3 /var/lib/grafana/grafana.db
 	echo "replace into org_user values (1,1,1,'Admin',datetime('now'),datetime('now'));" | sqlite3 /var/lib/grafana/grafana.db
     fi
-    grafana-cli admin reset-admin-password \
-        --config /etc/grafana/grafana.ini --homepath /usr/share/grafana \
-	"$GPASSWD"
+    grafana-cli \
+	--config /etc/grafana/grafana.ini --homepath /usr/share/grafana \
+	admin reset-admin-password "$GPASSWD"
 
     # Install the gnocchi plugin
     grafana-cli plugins install gnocchixyz-gnocchi-datasource
