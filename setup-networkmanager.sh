@@ -41,7 +41,7 @@ $DIRNAME/setup-network-plugin.sh
 # This is a nasty bug in oslo_service; see 
 # https://review.openstack.org/#/c/256267/
 #
-if [ $OSVERSION -ge $OSKILO ]; then
+if [ $OSVERSION -ge $OSKILO -a $OSVERSION -lt $OSNEWTON ]; then
     maybe_install_packages ${PYPKGPREFIX}-oslo.service
     patch -d / -p0 < $DIRNAME/etc/oslo_service-liberty-sig-MAINLOOP.patch
 fi
