@@ -63,7 +63,7 @@
                         "fill": 0,
                         "granularity": "00:05:00",
                         "groupby": "",
-                        "label": "",
+                        "label": "${host}",
                         "metric_id": "cpu",
                         "metric_name": "cpu",
                         "needed_overlap": 0,
