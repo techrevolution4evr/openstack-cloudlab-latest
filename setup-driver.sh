@@ -22,12 +22,15 @@ fi
 # Setup nginx to show our setup/config directory.
 #
 if [ "$HOSTNAME" = "$CONTROLLER" ]; then
+    ngfailed=0
     maybe_install_packages nginx
+    ngfailed=$?
     # Always remove default nginx site-enabled file, since apache must
     # listen on port 80.  But if apache2 ran prior to nginx, nginx
     # install may have failed; if so, remove its default enabled site.
-    if [ ! $? -eq 0 ]; then
-        rm -f /etc/nginx/sites-enabled/default
+    rm -f /etc/nginx/sites-available/default \
+        /etc/nginx/sites-enabled/default
+    if [ ! $ngfailed -eq 0 ]; then
 	maybe_install_packages nginx
     fi
     rm -f /etc/nginx/sites-enabled/default
@@ -60,6 +63,11 @@ EOF
     service_restart nginx
 fi
 logtstart "driver"
+
+#
+# Maybe expand the rootfs.
+#
+$DIRNAME/setup-grow-rootfs.sh 1> $OURDIR/setup-grow-rootfs.log 2>&1
 
 # Copy our source code into $OURDIR for future use:
 echo "*** Copying source code into $OURDIR/bin ..."

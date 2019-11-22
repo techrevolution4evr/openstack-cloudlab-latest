@@ -126,7 +126,7 @@ iface ${EXTERNAL_NETWORK_BRIDGE} inet static
     dns-search $DNSDOMAIN
     dns-nameservers $DNSSERVER
     up echo "${EXTERNAL_NETWORK_BRIDGE}" > /var/run/cnet
-    up echo "${EXTERNAL_NETWORK_BRIDGE}" > /var/emulab/boot/controlif
+    up echo "${EXTERNAL_NETWORK_INTERFACE}" > /var/emulab/boot/controlif
 $readdflows
 
 auto ${EXTERNAL_NETWORK_INTERFACE}
@@ -165,7 +165,7 @@ EOF
 # that were previously done in /etc/network/interfaces via "up" hook.
 #
 echo "${EXTERNAL_NETWORK_BRIDGE}" > /var/run/cnet
-echo "${EXTERNAL_NETWORK_BRIDGE}" > /var/emulab/boot/controlif
+echo "${EXTERNAL_NETWORK_INTERFACE}" > /var/emulab/boot/controlif
 EOF
     chmod 755 $OURDIR/testbed-pre-static-control-network.sh
     systemctl daemon-reload
@@ -223,7 +223,7 @@ service_restart openvswitch-switch
 
 # Also restart slothd so it listens on the new control iface.
 echo "${EXTERNAL_NETWORK_BRIDGE}" > /var/run/cnet
-echo "${EXTERNAL_NETWORK_BRIDGE}" > /var/emulab/boot/controlif
+echo "${EXTERNAL_NETWORK_INTERFACE}" > /var/emulab/boot/controlif
 /usr/local/etc/emulab/rc/rc.slothd stop
 pkill slothd
 sleep 1

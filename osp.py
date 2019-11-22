@@ -126,7 +126,14 @@ pc.defineParameter("sharedVlanAddress","Shared VLAN IP Address",
 pc.defineParameter("computeNodeCountSite2", "Number of compute nodes at Site 2",
                    portal.ParameterType.INTEGER, 0,advanced=True,
                    longDescription="You can add additional compute nodes from other CloudLab clusters, allowing you to experiment with remote VMs controlled from the central controller at the first site.")
+pc.defineParameter("osNodeTypeSite2", "Site 2 Hardware Type",
+                   portal.ParameterType.NODETYPE, "",
+                   longDescription="A specific hardware type to use for each node at Site 2.  Cloudlab clusters all have machines of specific types.  When you set this field to a value that is a specific hardware type, you will only be able to instantiate this profile on clusters with machines of that type.  If unset, when you instantiate the profile, the resulting experiment may have machines of any available type allocated.",
+                   advanced=True)
 
+pc.defineParameter("resizeRoot","Resize Root Filesystem",
+                   portal.ParameterType.STRING,"",advanced=True,
+                   longDescription="If set to 0 or integer, this will expand your root filesystem on each node.  In order to make the expansion possible, the swap and other unused partitions will be deleted.  If you set this parameter to 0, the maximum amount of space on the device hosting the root filesystem will be used.  If set to integer >0, your root filesystem will be expanding to that size in GB.  Do not append a postfix; even if you do, it will be ignored and the integer value will be interpreted in GB.")
 pc.defineParameter("swiftLVSize", "Swift Logical Volume Size",
                    portal.ParameterType.INTEGER,4,advanced=True,
                    longDescription="The necessary space in GB to reserve for each of two Swift backing store volumes, when it is possible to use logical volumes.  Nearly all Cloudlab machines do support logical volumes.  Ensure that the total disk space requested (20GB root + 2x Swift LV size + 1x Glance LV size) is less than the total disk space available on the node type you want to run on.")
@@ -840,7 +847,14 @@ if params.controllerHost != params.networkManagerHost:
     if params.networkManagerDiskImage:
         networkManager.disk_image = params.networkManagerDiskImage
     else:
-        networkManager.disk_image = "urn:publicid:IDN+%s+image+%s//%s%s%s" % (image_urn,image_project,image_os,image_tag_nm,image_tag_rel)
+        nmreltag = image_tag_rel
+        # If we don't have an image tag, or we are using a standard
+        # image, there will be no release tag either.  The latter case
+        # is possible because we no longer build OSNM images for >=
+        # Rocky.
+        if image_tag_nm == '' or image_tag_nm == '-STD':
+            nmreltag = ''
+        networkManager.disk_image = "urn:publicid:IDN+%s+image+%s//%s%s%s" % (image_urn,image_project,image_os,image_tag_nm,nmreltag)
     if firewalling and setfwdesire:
         networkManager.Desire('firewallable','1.0')
     i = 0
@@ -901,9 +915,10 @@ for (siteNumber,cpnameList) in computeNodeNamesBySite.iteritems():
     for cpname in cpnameList:
         cpnode = RSpec.RawPC(cpname)
         nodes[cpname] = cpnode
-        if params.osNodeType:
+        if params.osNodeType and siteNumber == 1:
             cpnode.hardware_type = params.osNodeType
-        pass
+        elif params.osNodeTypeSite2 and siteNumber == 2:
+            cpnode.hardware_type = params.osNodeTypeSite2
         cpnode.Site(str(siteNumber))
         if params.computeDiskImage:
             cpnode.disk_image = params.computeDiskImage
@@ -1189,6 +1204,9 @@ class Parameters(RSpec.Resource):
 
         param = ET.SubElement(el,paramXML)
         param.text = "GLANCE_LV_SIZE=%d" % (int(params.glanceLVSize))
+
+        param = ET.SubElement(el,paramXML)
+        param.text = "RESIZEROOT=%s" % (params.resizeRoot)
 
         return el
     pass

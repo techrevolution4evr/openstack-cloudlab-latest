@@ -60,6 +60,8 @@ fi
 if [ $OSVERSION -eq $OSROCKY ]; then
     crudini --set /etc/neutron/neutron.conf oslo_concurrency \
 	lock_path /var/lib/neutron/lock
+    crudini --set /etc/neutron/neutron.conf DEFAULT \
+	lock_path /var/lib/neutron/lock
     mkdir -p /var/lib/neutron/lock/
     chown neutron:neutron /var/lib/neutron/lock
 fi

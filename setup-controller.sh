@@ -352,7 +352,7 @@ EOF
 	chmod 750 /etc/etcd
     else
 	cat <<EOF >/etc/default/etcd
-ETCD_NAME="controller"
+ETCD_NAME="$CONTROLLER"
 ETCD_DATA_DIR="/var/lib/etcd"
 ETCD_INITIAL_CLUSTER_STATE="new"
 ETCD_INITIAL_CLUSTER_TOKEN="etcd-cluster-01"
@@ -382,13 +382,14 @@ if [ -z "${KEYSTONE_DBPASS}" ]; then
     echo "grant all privileges on keystone.* to 'keystone'@'%' identified by '$KEYSTONE_DBPASS'" | mysql -u root --password="$DB_ROOT_PASS"
 
     maybe_install_packages keystone ${PYPKGPREFIX}-keystoneclient
-    if [ $OSVERSION -ge $OSKILO ]; then
+    if [ $OSVERSION -ge $OSKILO -o $KEYSTONEUSEWSGI -eq 1 ]; then
 	maybe_install_packages apache2
 	if [ $ISPYTHON3 -eq 1 ]; then
 	    maybe_install_packages libapache2-mod-wsgi-py3
 	else
 	    maybe_install_packages libapache2-mod-wsgi
 	fi
+	a2enmod wsgi
     fi
 
     ADMIN_TOKEN=`$PSWDGEN`
@@ -581,6 +582,7 @@ EOF
 	    ln -s /etc/apache2/mods-available/wsgi.load \
 	        /etc/apache2/mods-enabled/
 	fi
+	a2ensite keystone
     fi
 
     if [ $OSVERSION -le $OSJUNO -o $KEYSTONEUSEWSGI -eq 0 ]; then
@@ -1249,6 +1251,13 @@ EOF
 	crudini --set /etc/nova/nova.conf vnc server_listen ${MGMTIP}
 	crudini --set /etc/nova/nova.conf vnc server_proxyclient_address ${MGMTIP}
     fi
+    #
+    # consoleauth is being deprecated as of Rocky.
+    #
+    # https://docs.openstack.org/nova/rocky/configuration/config.html#workarounds.enable_consoleauth
+    if [ $OSVERSION -ge $OSROCKY ]; then
+	crudini --set /etc/nova/nova.conf workarounds enable_consoleauth true
+    fi
 
     #
     # Apparently on Kilo and before, the default filters did not include
@@ -1652,6 +1661,8 @@ if [ -z "${NEUTRON_DBPASS}" ]; then
 
     if [ $OSVERSION -ge $OSROCKY ]; then
 	crudini --set /etc/neutron/neutron.conf oslo_concurrency \
+	    lock_path /var/lib/neutron/lock
+	crudini --set /etc/neutron/neutron.conf DEFAULT \
 	    lock_path /var/lib/neutron/lock
 	mkdir -p /var/lib/neutron/lock/
 	chown neutron:neutron /var/lib/neutron/lock
