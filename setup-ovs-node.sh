@@ -467,6 +467,13 @@ ip route flush cache
 # Just wait a bit
 #sleep 8
 
+# Also re-run linkdelay setup; it got blown away.  However, it should be
+# properly restored by rc.linkdelaysetup on future boots.
+if [ -e /var/emulab/boot/rc.linkdelay ]; then
+    echo "Restoring link shaping..."
+    /var/emulab/boot/rc.linkdelay
+fi
+
 # Some services (neutron-ovs-cleanup) might lookup the hostname prior to
 # network being up.  We have to handle this here once at startup; then
 # again later in the rc.hostnames hook below.

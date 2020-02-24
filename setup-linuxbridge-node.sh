@@ -440,6 +440,13 @@ done
 # Flush the routing cache
 ip route flush cache
 
+# Also re-run linkdelay setup; it got blown away.  However, it should be
+# properly restored by rc.linkdelaysetup on future boots.
+if [ -e /var/emulab/boot/rc.linkdelay ]; then
+    echo "Restoring link shaping..."
+    /var/emulab/boot/rc.linkdelay
+fi
+
 #
 # Set the hostname for later after reboot!
 #
