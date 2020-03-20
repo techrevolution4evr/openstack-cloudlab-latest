@@ -605,8 +605,22 @@ FLOW="dl_type=0x0806,nw_proto=0x2,arp_spa=${ctlip},actions=NORMAL"
 ovs-ofctl add-flow br-ex "$FLOW"
 echo "$FLOW" >> $FF
 
+# Somewhere in Stein, the internal openvswitch vlan tagging changed, so
+# that even though vlan tags are applied in br-int for packets coming
+# from br-ex, it is now br-ex's job to strip in the reverse direction.
+# So for > Stein, just add strip_vlan for these ARP reply rules.  We
+# only want to have them apply on traffic coming from br-int, but it's
+# not obvious how to force a particular internal vlan assignment.  The
+# only thing we could do is scrape the one assigned by openswitch-agent
+# by looking at its db, or at the br-int flow rules.  But for now we
+# don't have to care; any public ARP replies will need tags stripped
+# since we don't support control net (br-ex) vlans right now.
+pubactions="NORMAL"
+if [ $OSVERSION -ge $OSSTEIN ] ; then
+    pubactions="strip_vlan,NORMAL"
+fi
 for addr in $PUBLICADDRS ; do
-    FLOW="dl_type=0x0806,nw_proto=0x2,arp_spa=${addr},actions=NORMAL"
+    FLOW="dl_type=0x0806,nw_proto=0x2,arp_spa=${addr},actions=${pubactions}"
     ovs-ofctl add-flow br-ex "$FLOW"
     echo "$FLOW" >> $FF
 done
