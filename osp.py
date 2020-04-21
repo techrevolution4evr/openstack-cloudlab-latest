@@ -441,19 +441,6 @@ else:
 #
 pc.verifyParameters()
 
-detailedParamAutoDocs = ''
-for param in pc._parameterOrder:
-    if not pc._parameters.has_key(param):
-        continue
-    detailedParamAutoDocs += \
-      """
-  - *%s*
-
-    %s
-    (default value: *%s*)
-      """ % (pc._parameters[param]['description'],pc._parameters[param]['longDescription'],pc._parameters[param]['defaultValue'])
-    pass
-
 tourDescription = \
   "This profile provides a highly-configurable OpenStack instance with a controller and one or more compute nodes (potentially at multiple Cloudlab sites) (and optionally a network manager node, in a split configuration). This profile runs x86, arm64, and POWER8 (Queens and up) nodes. It sets up OpenStack Stein (Ubuntu 18.04, python3), Rocky, Queens (Ubuntu 18.04, python2), Pike, Ocata, Newton, or Mitaka (Ubuntu 16.04, python2) (Liberty on 15.10, Kilo on 15.04, and Juno on 14.10, python2, *deprecated*) according to your choice, and configures all OpenStack services, pulls in some VM disk images, and creates basic networks accessible via floating IPs.  You'll be able to create instances and access them over the Internet in just a few minutes. When you click the Instantiate button, you'll be presented with a list of parameters that you can change to control what your OpenStack instance will look like; **carefully** read the parameter documentation on that page (or in the Instructions) to understand the various features available to you."
 
@@ -486,11 +473,7 @@ If you need to run the OpenStack CLI tools, or your own scripts that use the Ope
 *Do not* add any VMs on the `ext-net` network; instead, give them floating IP addresses from the pool this profile requests on your behalf (and increase the size of that pool when you instantiate by changing the `Number of public IP addresses` parameter).  If you try to use any public IP addresses on the `ext-net` network that are not part of your experiment (i.e., any that are not either the control network public IPs for the physical machines, or the public IPs used as floating IPs), those packets will be blocked, and you will be confused.
 
 The profile's setup scripts are automatically installed on each node in `/tmp/setup` .  They execute as `root`, and keep state and downloaded files in `/root/setup/`.  More importantly, they write copious logfiles in that directory; so if you think there's a problem with the configuration, you could take a quick look through these logs --- especially `setup-controller.log` on the `ctl` node.
-
-
-### Detailed Parameter Documentation
-%s
-""" % (params.controllerHost,grafanaInstructions,passwdHelp,params.controllerHost,detailedParamAutoDocs)
+""" % (params.controllerHost,grafanaInstructions,passwdHelp,params.controllerHost)
 
 #
 # Setup the Tour info with the above description and instructions.
