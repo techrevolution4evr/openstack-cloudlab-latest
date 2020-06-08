@@ -495,6 +495,7 @@ cp -p $OURDIR/mgmt-hosts /var/run/emulab/hosts.head
 # Some services (neutron-ovs-cleanup) might lookup the hostname prior to
 # network being up.
 echo $ctlip $hostname >> /var/run/emulab/hosts.head
+cp -p /var/run/emulab/hosts.head /var/run/emulab/hosts.tail
 
 exit 0
 EOF
