@@ -261,6 +261,9 @@ pc.defineParameter("computeDiskImage","Compute Node Disk Image",
 pc.defineParameter("networkManagerDiskImage","Network Manager Node Disk Image",
                    portal.ParameterType.IMAGE,"",advanced=True,
                    longDescription="An image URN or URL that the network manager node will run.")
+pc.defineParameter("publicAPIEndpoints","Make Public API Endpoints Reachable over Internet",
+                   portal.ParameterType.BOOLEAN,False,advanced=True,
+                   longDescription="Make public API endpoints reachable over public internet.  The endpoints are still not protected with SSL, so don't enable this unless you must reach these endpoints remotely and have no other option.")
 #pc.defineParameter("blockStorageHost", "Name of block storage server node",
 #                   portal.ParameterType.STRING, "ctl")
 #pc.defineParameter("objectStorageHost", "Name of object storage server node",
@@ -1190,6 +1193,9 @@ class Parameters(RSpec.Resource):
 
         param = ET.SubElement(el,paramXML)
         param.text = "RESIZEROOT=%s" % (params.resizeRoot)
+
+        param = ET.SubElement(el,paramXML)
+        param.text = "PUBLICAPIENDPOINTS=%d" % (int(bool(params.publicAPIEndpoints)))
 
         return el
     pass

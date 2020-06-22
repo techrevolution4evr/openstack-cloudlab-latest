@@ -4895,6 +4895,37 @@ if [ -e $OURDIR/random_admin_pass ]; then
     RANDPASSSTRING="We generated a random OpenStack admin and instance VM password for you, since one wasn't supplied.  The password is '${ADMIN_PASS}'"
 fi
 
+#
+# Optionally, change all the public-facing service endpoints to our
+# FQDN.
+#
+if [ -n "$PUBLICAPIENDPOINTS" -a $PUBLICAPIENDPOINTS -eq 1 ]; then
+    HDOMAIN=`hostname`
+    __openstack endpoint list | grep -q public
+    if [ $? -eq 0 ]; then
+	IFS='
+'
+	for line in `openstack endpoint list | grep public`; do
+	    sid=`echo $line | awk '/ / {print $2}'`
+	    surl=`echo $line | sed -e 's/^.*\(http[^ ]*\) *.*$/\1/'`
+	    url=`echo "$surl" | sed -e "s/$CONTROLLER:/$HDOMAIN:/"`
+	    echo "Changing public endpoint ($surl) to ($url)"
+	    __openstack endpoint set --url "$url" "$sid"
+	done
+	unset IFS
+    else
+	for sid in `openstack endpoint list | awk '/ / {print \$2}' | grep -v ^ID\$`; do
+	    surl=`openstack endpoint show $sid | grep publicurl | awk '/ / {print \$4}'`
+	    if [ -n "$surl" ]; then
+		url=`echo "$surl" | sed -e "s/$CONTROLLER:/$HDOMAIN:/"`
+		echo "Changing public endpoint ($surl) to ($url)"
+		echo "update endpoint set url='$url' where interface='public' and legacy_endpoint_id='$sid'" \
+	            | mysql keystone
+	    fi
+	done
+    fi
+fi
+
 logtstart "ext"
 EXTDIRS=`find $DIRNAME/ext -maxdepth 1 -type d | grep -v ^\.\$ | grep -v $DIRNAME/ext\$ | xargs`
 if [ ! -z "$EXTDIRS" ]; then

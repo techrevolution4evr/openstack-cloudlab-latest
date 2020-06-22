@@ -132,6 +132,7 @@ OSRELEASE=""
 # 0, the max amount of space after removing swap and extra partitions
 # will be used.
 RESIZEROOT=""
+PUBLICAPIENDPOINTS=0
 
 #
 # We have an 'adminapi' user that gets a random password.  Then, we have
