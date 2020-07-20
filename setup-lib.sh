@@ -335,7 +335,7 @@ ARCH=`uname -m`
 
 # Ensure hostname is set correctly.
 curh=`hostname`
-corh="${HOSTNAME}.${OURDOMAIN}"
+corh="${HOSTNAME}.${EXPDOMAIN}"
 if [ ! "$corh" = "$curh" ]; then
     echo "Replacing bogus current hostname ($curh) with correct $corh"
     hostname "$corh"
