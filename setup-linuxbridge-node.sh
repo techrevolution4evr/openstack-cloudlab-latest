@@ -85,7 +85,6 @@ route add default gw $ctlgw
 #
 # Make the configuration for the $EXTERNAL_NETWORK_INTERFACE be static.
 #
-DNSDOMAIN=`hostname | cut -d. -f4-100`
 DNSSERVER=`cat /etc/resolv.conf | grep nameserver | head -1 | awk '{ print $2 }'`
 
 #
@@ -112,7 +111,7 @@ iface ${EXTERNAL_NETWORK_BRIDGE} inet static
     address $ctlip
     netmask $ctlnetmask
     gateway $ctlgw
-    dns-search $DNSDOMAIN
+    dns-search $OURDOMAIN
     dns-nameservers $DNSSERVER
     up echo "${EXTERNAL_NETWORK_BRIDGE}" > /var/run/cnet
     up echo "${EXTERNAL_NETWORK_INTERFACE}" > /var/emulab/boot/controlif
@@ -175,7 +174,7 @@ DHCP=no
 Address=$ctlip/$ctlprefix
 Gateway=$ctlgw
 DNS=$DNSSERVER
-Domains=$DNSDOMAIN
+Domains=$OURDOMAIN
 IPForward=yes
 EOF
 fi
@@ -450,7 +449,7 @@ fi
 #
 # Set the hostname for later after reboot!
 #
-echo `hostname` > /etc/hostname
+echo $NFQDN > /etc/hostname
 
 grep -q DYNRUNDIR /etc/emulab/paths.sh
 if [ $? -eq 0 ]; then

@@ -49,8 +49,7 @@ done
 # Before we setup networks, create a Designate zone.
 #
 if [ $OSVERSION -ge $OSNEWTON ]; then
-    mydomain=`hostname | sed -n -e 's/[^\.]*\.\(.*\)$/\1/p'`
-    openstack zone create --email root@localhost "${mydomain}."
+    openstack zone create --email root@localhost "${EXPDOMAIN}."
 fi
 
 #
@@ -78,7 +77,7 @@ if [ ${DATATUNNELS} -gt 0 ]; then
 	    manila share-network-create --name share-${LAN}-net \
 		--neutron-net-id $NETID --neutron-subnet-id $SUBNETID
 	    if [ $OSVERSION -ge $OSNEWTON ]; then
-		neutron net-update $NETID --dns-domain ${mydomain}.
+		neutron net-update $NETID --dns-domain "${EXPDOMAIN}."
 	    fi
 	fi
 
@@ -131,7 +130,7 @@ for lan in ${DATAFLATLANS} ; do
 	manila share-network-create --name share-${lan}-net \
 	    --neutron-net-id $NETID --neutron-subnet-id $SUBNETID
 	if [ $OSVERSION -ge $OSNEWTON ]; then
-	    neutron net-update $NETID --dns-domain ${mydomain}.
+	    neutron net-update $NETID --dns-domain "${EXPDOMAIN}."
 	fi
     fi
 done
@@ -160,7 +159,7 @@ for lan in ${DATAVLANS} ; do
 	manila share-network-create --name share-${lan}-net \
 	    --neutron-net-id $NETID --neutron-subnet-id $SUBNETID
 	if [ $OSVERSION -ge $OSNEWTON ]; then
-	    neutron net-update $NETID --dns-domain ${mydomain}.
+	    neutron net-update $NETID --dns-domain "${EXPDOMAIN}."
 	fi
     fi
 done
@@ -190,7 +189,7 @@ if [ ${DATAVXLANS} -gt 0 ]; then
 	    manila share-network-create --name share-${LAN}-net \
 		--neutron-net-id $NETID --neutron-subnet-id $SUBNETID
 	    if [ $OSVERSION -ge $OSNEWTON ]; then
-		neutron net-update $NETID --dns-domain ${mydomain}.
+		neutron net-update $NETID --dns-domain "${EXPDOMAIN}."
 	    fi
 	fi
 

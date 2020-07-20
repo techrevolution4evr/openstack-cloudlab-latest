@@ -330,7 +330,16 @@ PFQDN="`cat $BOOTDIR/nodeid`.$OURDOMAIN"
 MYIP=`cat $BOOTDIR/myip`
 EXTERNAL_NETWORK_INTERFACE=`cat $BOOTDIR/controlif`
 HOSTNAME=`cat ${BOOTDIR}/nickname | cut -f1 -d.`
+EXPDOMAIN=`echo "${EEID}.${EPID}.${OURDOMAIN}" | sed -e 's/[A-Z]/\L&/g'`
 ARCH=`uname -m`
+
+# Ensure hostname is set correctly.
+curh=`hostname | sed -e 's/[A-Z]/\L&/g'`
+corh=`echo "${HOSTNAME}.${EXPDOMAIN}" | sed -e 's/[A-Z]/\L&/g'`
+if [ ! "$corh" = "$curh" ]; then
+    echo "Replacing bogus current hostname ($curh) with correct $corh"
+    hostname "$corh"
+fi
 
 # Check if our init is systemd
 dpkg-query -S /sbin/init | grep -q systemd
@@ -1472,10 +1481,9 @@ fi
 # phys node at different clusters.
 #
 if [ ! -f /etc/emulab/bossnode -a $OSVERSION -ge $OSNEWTON -a "${USE_DESIGNATE_AS_RESOLVER}" = "1" ]; then
-    mydomain=`hostname | sed -n -e 's/[^\.]*\.\(.*\)$/\1/p'`
     mynameserver=`sed -n -e 's/^nameserver \([0-9]*\.[0-9]*\.[0-9]*\.[0-9]*\).*$/\1/p' < /etc/resolv.conf | head -1`
     if [ -z "$mynameserver" ]; then
-	mynameserver=`dig +short boss.$mydomain A`
+	mynameserver=`dig +short boss.$OURDOMAIN A`
     fi
     if [ -n "$mynameserver" ]; then
 	echo $mynameserver > /etc/emulab/bossnode
