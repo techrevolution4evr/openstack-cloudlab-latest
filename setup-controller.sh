@@ -79,7 +79,7 @@ maybe_install_packages dma
 maybe_install_packages mailutils
 echo "$PFQDN" > /etc/mailname
 sleep 2
-echo "Your OpenStack instance is setting up on `hostname` ." \
+echo "Your OpenStack instance is setting up on $NFQDN ." \
     |  mail -s "OpenStack Instance Setting Up" ${SWAPPER_EMAIL} &
 
 #
@@ -4481,10 +4481,9 @@ if [ $OSVERSION -ge $OSNEWTON -a -z "${DESIGNATE_DBPASS}" ]; then
     chmod g+r /etc/designate/rndc.key
     usermod -a -G designate bind
 
-    mydomain=`hostname | sed -n -e 's/[^\.]*\.\(.*\)$/\1/p'`
     mynameserver=`sed -n -e 's/^nameserver \([0-9]*\.[0-9]*\.[0-9]*\.[0-9]*\).*$/\1/p' < /etc/resolv.conf | head -1`
     if [ -z "$mynameserver" ]; then
-	mynameserver=`dig +short boss.$mydomain A`
+	mynameserver=`dig +short boss.$EXPDOMAIN A`
     fi
     if [ -z "$mynameserver" ]; then
 	echo "WARNING: cannot find current nameserver; not configuring Designate"
@@ -4652,7 +4651,7 @@ EOF
 
     rm -f /var/lib/designate/designate.sqlite
 
-    crudini --set /etc/neutron/neutron.conf DEFAULT dns_domain "${mydomain}."
+    crudini --set /etc/neutron/neutron.conf DEFAULT dns_domain "${EXPDOMAIN}."
     # NB, we do this in the setup-network-plugin-*.sh scripts, because
     # they might also set the extension_drivers key -- but they might do
     # it in the mechanism driver's file instead of neutron.conf.  Can't
@@ -4900,7 +4899,6 @@ fi
 # FQDN.
 #
 if [ -n "$PUBLICAPIENDPOINTS" -a $PUBLICAPIENDPOINTS -eq 1 ]; then
-    HDOMAIN=`hostname`
     __openstack endpoint list | grep -q public
     if [ $? -eq 0 ]; then
 	IFS='
@@ -4908,7 +4906,7 @@ if [ -n "$PUBLICAPIENDPOINTS" -a $PUBLICAPIENDPOINTS -eq 1 ]; then
 	for line in `openstack endpoint list | grep public`; do
 	    sid=`echo $line | awk '/ / {print $2}'`
 	    surl=`echo $line | sed -e 's/^.*\(http[^ ]*\) *.*$/\1/'`
-	    url=`echo "$surl" | sed -e "s/$CONTROLLER:/$HDOMAIN:/"`
+	    url=`echo "$surl" | sed -e "s/$CONTROLLER:/$NFQDN:/"`
 	    echo "Changing public endpoint ($surl) to ($url)"
 	    __openstack endpoint set --url "$url" "$sid"
 	done
@@ -4917,7 +4915,7 @@ if [ -n "$PUBLICAPIENDPOINTS" -a $PUBLICAPIENDPOINTS -eq 1 ]; then
 	for sid in `openstack endpoint list | awk '/ / {print \$2}' | grep -v ^ID\$`; do
 	    surl=`openstack endpoint show $sid | grep publicurl | awk '/ / {print \$4}'`
 	    if [ -n "$surl" ]; then
-		url=`echo "$surl" | sed -e "s/$CONTROLLER:/$HDOMAIN:/"`
+		url=`echo "$surl" | sed -e "s/$CONTROLLER:/$NFQDN:/"`
 		echo "Changing public endpoint ($surl) to ($url)"
 		echo "update endpoint set url='$url' where interface='public' and legacy_endpoint_id='$sid'" \
 	            | mysql keystone
@@ -4953,24 +4951,22 @@ logtend "ext"
 # Designate setup happens to fail or bind doesn't start.
 #
 if [ -n "$DESIGNATE_PASS" -a "${USE_DESIGNATE_AS_RESOLVER}" = "1" ]; then
-    mydomain=`hostname | sed -n -e 's/[^\.]*\.\(.*\)$/\1/p'`
     mynameserver=`sed -n -e 's/^nameserver \([0-9]*\.[0-9]*\.[0-9]*\.[0-9]*\).*$/\1/p' < /etc/resolv.conf | head -1`
     if [ -z "$mynameserver" ]; then
-	mynameserver=`dig +short boss.$mydomain A`
+	mynameserver=`dig +short boss.$EXPDOMAIN A`
     fi
     cp -p /etc/resolv.conf /etc/resolv.conf.orig
     grep -q forwarders /etc/bind/named.conf.options
     if [ $? -eq 0 -a -n "$mynameserver" ]; then
-	outerdomain=`cat /var/emulab/boot/mydomain`
-	dig @127.0.0.1 $mydomain
+	dig @127.0.0.1 $EXPDOMAIN
 	if [ $? -eq 0 ]; then
 	    echo nameserver ${MGMTIP} >/etc/resolv.conf
 	    echo nameserver $mynameserver >>/etc/resolv.conf
-	    echo search $mydomain $outerdomain >>/etc/resolv.conf
+	    echo search $EXPDOMAIN $OURDOMAIN >>/etc/resolv.conf
 
-	    dig @${MGMTIP} boss.$outerdomain
+	    dig @${MGMTIP} boss.$OURDOMAIN
 	    if [ ! $? -eq 0 ]; then
-	       echo "WARNING: cannot lookup boss.$outerdomain using Designate;"
+	       echo "WARNING: cannot lookup boss.$OURDOMAIN using Designate;"
 	       echo "reverting back to non-Designate phys host configuration!"
 	       cp -p /etc/resolv.conf.orig /etc/resolv.conf
 	    else
@@ -4998,7 +4994,7 @@ if [ -n "$DESIGNATE_PASS" -a "${USE_DESIGNATE_AS_RESOLVER}" = "1" ]; then
 	fi
     else
 	echo "WARNING: could not find nameserver in /etc/resolv.conf or as"
-	echo "boss.$mydomain; reverting back to non-Designate phys host"
+	echo "boss.$EXPDOMAIN; reverting back to non-Designate phys host"
 	echo "configuration!"
 	cp -p /etc/resolv.conf.orig /etc/resolv.conf
     fi

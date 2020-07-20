@@ -91,7 +91,6 @@ ovs-vsctl add-port ${EXTERNAL_NETWORK_BRIDGE} ${EXTERNAL_NETWORK_INTERFACE}
 #
 # Now move the $EXTERNAL_NETWORK_INTERFACE and default route config to ${EXTERNAL_NETWORK_BRIDGE}
 #
-DNSDOMAIN=`hostname | cut -d. -f4-100`
 DNSSERVER=`cat /etc/resolv.conf | grep nameserver | head -1 | awk '{ print $2 }'`
 
 #
@@ -123,7 +122,7 @@ iface ${EXTERNAL_NETWORK_BRIDGE} inet static
     address $ctlip
     netmask $ctlnetmask
     gateway $ctlgw
-    dns-search $DNSDOMAIN
+    dns-search $OURDOMAIN
     dns-nameservers $DNSSERVER
     up echo "${EXTERNAL_NETWORK_BRIDGE}" > /var/run/cnet
     up echo "${EXTERNAL_NETWORK_INTERFACE}" > /var/emulab/boot/controlif
@@ -202,7 +201,7 @@ DHCP=no
 Address=$ctlip/$ctlprefix
 Gateway=$ctlgw
 DNS=$DNSSERVER
-Domains=$DNSDOMAIN
+Domains=$OURDOMAIN
 IPForward=yes
 EOF
     cat <<EOF >/etc/systemd/network/${EXTERNAL_NETWORK_INTERFACE}.network
@@ -457,8 +456,7 @@ done
 #
 # Set the hostname for later after reboot!
 #
-hostname=`hostname`
-echo $hostname > /etc/hostname
+echo $NFQDN > /etc/hostname
 
 service_restart openvswitch-switch
 
@@ -477,7 +475,7 @@ fi
 # Some services (neutron-ovs-cleanup) might lookup the hostname prior to
 # network being up.  We have to handle this here once at startup; then
 # again later in the rc.hostnames hook below.
-echo $ctlip $hostname >> /tmp/hosts.tmp
+echo $ctlip $NFQDN >> /tmp/hosts.tmp
 cat /etc/hosts >> /tmp/hosts.tmp
 mv /tmp/hosts.tmp /etc/hosts
 
@@ -494,7 +492,7 @@ cp -p $OURDIR/mgmt-hosts /var/run/emulab/hosts.head
 
 # Some services (neutron-ovs-cleanup) might lookup the hostname prior to
 # network being up.
-echo $ctlip $hostname >> /var/run/emulab/hosts.head
+echo $ctlip $NFQDN >> /var/run/emulab/hosts.head
 cp -p /var/run/emulab/hosts.head /var/run/emulab/hosts.tail
 
 exit 0

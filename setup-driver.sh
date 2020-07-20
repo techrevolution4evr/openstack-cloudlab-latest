@@ -107,7 +107,7 @@ if [ "$HOSTNAME" = "$NETWORKMANAGER" ]; then
     cat $OURDIR/mgmt-hosts > /etc/hosts.tmp
     # Some services assume they can resolve the hostname prior to network being
     # up (i.e. neutron-ovs-cleanup; see setup-ovs-node.sh).
-    echo $MYIP `hostname` >> /etc/hosts.tmp
+    echo $MYIP $NFQDN >> /etc/hosts.tmp
     cp -p /etc/hosts $OURDIR/hosts.orig
     cp -p /etc/hosts $OURDIR/hosts.stripped
     for node in $NODES ; do
