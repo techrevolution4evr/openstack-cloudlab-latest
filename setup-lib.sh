@@ -330,12 +330,12 @@ PFQDN="`cat $BOOTDIR/nodeid`.$OURDOMAIN"
 MYIP=`cat $BOOTDIR/myip`
 EXTERNAL_NETWORK_INTERFACE=`cat $BOOTDIR/controlif`
 HOSTNAME=`cat ${BOOTDIR}/nickname | cut -f1 -d.`
-EXPDOMAIN=`echo "${EEID}.${EPID}.${OURDOMAIN}" | sed -e 's/[A-Z]/\L&/g`
+EXPDOMAIN=`echo "${EEID}.${EPID}.${OURDOMAIN}" | sed -e 's/[A-Z]/\L&/g'`
 ARCH=`uname -m`
 
 # Ensure hostname is set correctly.
-curh=`hostname | sed -e 's/[A-Z]/\L&/g`
-corh=`echo "${HOSTNAME}.${EXPDOMAIN}" | sed -e 's/[A-Z]/\L&/g`
+curh=`hostname | sed -e 's/[A-Z]/\L&/g'`
+corh=`echo "${HOSTNAME}.${EXPDOMAIN}" | sed -e 's/[A-Z]/\L&/g'`
 if [ ! "$corh" = "$curh" ]; then
     echo "Replacing bogus current hostname ($curh) with correct $corh"
     hostname "$corh"
