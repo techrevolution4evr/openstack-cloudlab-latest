@@ -358,6 +358,7 @@ OSPIKE=16
 OSQUEENS=17
 OSROCKY=18
 OSSTEIN=19
+OSTRAIN=20
 
 . /etc/lsb-release
 #
@@ -375,6 +376,7 @@ if [ ! "x$OSRELEASE" = "x" ]; then
     if [ $OSCODENAME = "queens" ]; then OSVERSION=$OSQUEENS ; fi
     if [ $OSCODENAME = "rocky" ]; then OSVERSION=$OSROCKY ; fi
     if [ $OSCODENAME = "stein" ]; then OSVERSION=$OSSTEIN ; fi
+    if [ $OSCODENAME = "train" ]; then OSVERSION=$OSTRAIN ; fi
 
     #
     # We only use cloudarchive for LTS images!

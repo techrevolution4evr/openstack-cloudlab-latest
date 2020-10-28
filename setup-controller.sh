@@ -1132,8 +1132,9 @@ if [ -z "${NOVA_DBPASS}" ]; then
 	fi
     fi
 
-    maybe_install_packages nova-api nova-conductor nova-consoleauth \
-	nova-novncproxy nova-scheduler ${PYPKGPREFIX}-novaclient
+    maybe_install_packages nova-api nova-conductor \
+	nova-novncproxy nova-scheduler
+    maybe_install_packages nova-consoleauth ${PYPKGPREFIX}-novaclient
     if [ $OSVERSION -lt $OSQUEENS ]; then
 	maybe_install_packages nova-cert
     fi
