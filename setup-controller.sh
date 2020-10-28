@@ -371,6 +371,128 @@ EOF
     logtend "etcd"
 fi
 
+make_credential_files() {
+    if [ -e $OURDIR/admin-openrc-newcli.sh \
+	 -a -e $OURDIR/admin-openrc-oldcli.sh \
+	 -a -e $OURDIR/admin-openrc-oldcli.py \
+	 -a -e $OURDIR/admin-openrc-newcli.py \
+	 -a -e $OURDIR/admin-openrc.sh \
+	 -a -e $OURDIR/admin-openrc.py ]; then
+	return
+    fi
+
+    #
+    # Create the admin-openrc.{sh,py} files.
+    #
+    echo "export OS_TENANT_NAME=admin" > $OURDIR/admin-openrc-oldcli.sh
+    echo "export OS_USERNAME=${ADMIN_API}" >> $OURDIR/admin-openrc-oldcli.sh
+    echo "export OS_PASSWORD=${ADMIN_API_PASS}" >> $OURDIR/admin-openrc-oldcli.sh
+    echo "export OS_AUTH_URL=http://$CONTROLLER:${KADMINPORT}/v2.0" >> $OURDIR/admin-openrc-oldcli.sh
+
+    echo "OS_TENANT_NAME=\"admin\"" > $OURDIR/admin-openrc-oldcli.py
+    echo "OS_USERNAME=\"${ADMIN_API}\"" >> $OURDIR/admin-openrc-oldcli.py
+    echo "OS_PASSWORD=\"${ADMIN_API_PASS}\"" >> $OURDIR/admin-openrc-oldcli.py
+    echo "OS_AUTH_URL=\"http://$CONTROLLER:${KADMINPORT}/v2.0\"" >> $OURDIR/admin-openrc-oldcli.py
+    if [ "x$KEYSTONEAPIVERSION" = "x3" ]; then
+	echo "OS_IDENTITY_API_VERSION=3" >> $OURDIR/admin-openrc-oldcli.py
+    else
+	echo "OS_IDENTITY_API_VERSION=2.0" >> $OURDIR/admin-openrc-oldcli.py
+    fi
+
+    #
+    # These trigger a bug with the openstack client -- it doesn't choose v2.0
+    # if they're set.
+    #
+    if [ "x$KEYSTONEAPIVERSION" = "x3" ]; then
+	if [ $OSVERSION -lt $OSMITAKA ]; then
+	    echo "export OS_PROJECT_DOMAIN_ID=default" > $OURDIR/admin-openrc-newcli.sh
+	    echo "export OS_USER_DOMAIN_ID=default" >> $OURDIR/admin-openrc-newcli.sh
+	else
+	    echo "export OS_PROJECT_DOMAIN_NAME=default" > $OURDIR/admin-openrc-newcli.sh
+	    echo "export OS_USER_DOMAIN_NAME=default" >> $OURDIR/admin-openrc-newcli.sh
+	fi
+    fi
+    echo "export OS_PROJECT_NAME=admin" >> $OURDIR/admin-openrc-newcli.sh
+    echo "export OS_TENANT_NAME=admin" >> $OURDIR/admin-openrc-newcli.sh
+    echo "export OS_USERNAME=${ADMIN_API}" >> $OURDIR/admin-openrc-newcli.sh
+    echo "export OS_PASSWORD=${ADMIN_API_PASS}" >> $OURDIR/admin-openrc-newcli.sh
+    echo "export OS_AUTH_URL=http://$CONTROLLER:${KADMINPORT}/${KAPISTR}" >> $OURDIR/admin-openrc-newcli.sh
+    if [ "x$KEYSTONEAPIVERSION" = "x3" ]; then
+	echo "export OS_IDENTITY_API_VERSION=3" >> $OURDIR/admin-openrc-newcli.sh
+    else
+	echo "export OS_IDENTITY_API_VERSION=2.0" >> $OURDIR/admin-openrc-newcli.sh
+    fi
+    if [ $OSVERSION -ge $OSNEWTON ]; then
+	echo "export OS_IMAGE_API_VERSION=2" >> $OURDIR/admin-openrc-newcli.sh
+    fi
+    if [ $OSVERSION -ge $OSQUEENS ]; then
+	echo "export OS_AUTH_TYPE=password" >> $OURDIR/admin-openrc-newcli.sh
+    fi
+
+    if [ "x$KEYSTONEAPIVERSION" = "x3" ]; then
+	if [ $OSVERSION -lt $OSMITAKA ]; then
+	    echo "OS_PROJECT_DOMAIN_ID=\"default\"" > $OURDIR/admin-openrc-newcli.py
+	    echo "OS_USER_DOMAIN_ID=\"default\"" >> $OURDIR/admin-openrc-newcli.py
+	else
+	    echo "OS_PROJECT_DOMAIN_NAME=\"default\"" > $OURDIR/admin-openrc-newcli.py
+	    echo "OS_USER_DOMAIN_NAME=\"default\"" >> $OURDIR/admin-openrc-newcli.py
+	fi
+    fi
+    echo "OS_PROJECT_NAME=\"admin\"" >> $OURDIR/admin-openrc-newcli.py
+    echo "OS_TENANT_NAME=\"admin\"" >> $OURDIR/admin-openrc-newcli.py
+    echo "OS_USERNAME=\"${ADMIN_API}\"" >> $OURDIR/admin-openrc-newcli.py
+    echo "OS_PASSWORD=\"${ADMIN_API_PASS}\"" >> $OURDIR/admin-openrc-newcli.py
+    echo "OS_AUTH_URL=\"http://$CONTROLLER:${KADMINPORT}/${KAPISTR}\"" >> $OURDIR/admin-openrc-newcli.py
+    if [ "x$KEYSTONEAPIVERSION" = "x3" ]; then
+	echo "OS_IDENTITY_API_VERSION=3" >> $OURDIR/admin-openrc-newcli.py
+    else
+	echo "OS_IDENTITY_API_VERSION=2.0" >> $OURDIR/admin-openrc-newcli.py
+    fi
+    if [ $OSVERSION -ge $OSNEWTON ]; then
+	echo "OS_IMAGE_API_VERSION=2" >> $OURDIR/admin-openrc-newcli.py
+    fi
+    if [ $OSVERSION -ge $OSQUEENS ]; then
+	echo "OS_AUTH_TYPE='password'" >> $OURDIR/admin-openrc-newcli.py
+    fi
+
+    if [ $OSVERSION -eq $OSJUNO ]; then
+	ln -sf $OURDIR/admin-openrc-oldcli.sh $OURDIR/admin-openrc.sh
+	ln -sf $OURDIR/admin-openrc-oldcli.py $OURDIR/admin-openrc.py
+    else
+	ln -sf $OURDIR/admin-openrc-newcli.sh $OURDIR/admin-openrc.sh
+	ln -sf $OURDIR/admin-openrc-newcli.py $OURDIR/admin-openrc.py
+    fi
+}
+
+export_credentials() {
+    if [ $OSVERSION -eq $OSJUNO ]; then
+	export OS_TENANT_NAME=admin
+	export OS_USERNAME=${ADMIN_API}
+	export OS_PASSWORD=${ADMIN_API_PASS}
+	export OS_AUTH_URL=http://$CONTROLLER:${KADMINPORT}/${KAPISTR}
+    else
+	if [ "x$KEYSTONEAPIVERSION" = "x3" ]; then
+	    if [ $OSVERSION -lt $OSMITAKA ]; then
+		export OS_PROJECT_DOMAIN_ID=default
+		export OS_USER_DOMAIN_ID=default
+	    else
+		export OS_PROJECT_DOMAIN_NAME=default
+		export OS_USER_DOMAIN_NAME=default
+	    fi
+	fi
+	export OS_PROJECT_NAME=admin
+	export OS_TENANT_NAME=admin
+	export OS_USERNAME=${ADMIN_API}
+	export OS_PASSWORD=${ADMIN_API_PASS}
+	export OS_AUTH_URL=http://${CONTROLLER}:${KADMINPORT}/${KAPISTR}
+	if [ "x$KEYSTONEAPIVERSION" = "x3" ]; then
+	    export OS_IDENTITY_API_VERSION=3
+	else
+	    export OS_IDENTITY_API_VERSION=2.0
+	fi
+    fi
+}
+
 #
 # Install the Identity Service
 #
@@ -604,91 +726,126 @@ EOF
         echo '@hourly /usr/bin/keystone-manage token_flush >/var/log/keystone/keystone-tokenflush.log 2>&1' \
         >> /var/spool/cron/crontabs/keystone
 
-    # Create admin token
-    if [ $OSVERSION -lt $OSKILO ]; then
-	export OS_SERVICE_TOKEN=$ADMIN_TOKEN
-	export OS_SERVICE_ENDPOINT=http://$CONTROLLER:${KADMINPORT}/$KAPISTR
-    else
-	export OS_TOKEN=$ADMIN_TOKEN
-	export OS_URL=http://$CONTROLLER:${KADMINPORT}/$KAPISTR
-
-	if [ "x$KEYSTONEAPIVERSION" = "x3" ]; then
-	    export OS_IDENTITY_API_VERSION=3
-	else
-	    export OS_IDENTITY_API_VERSION=2.0
-	fi
-    fi
-
-    if [ $OSVERSION -lt $OSKILO ]; then
-        # Create the service tenant:
-	keystone tenant-create --name service --description "Service Tenant"
-        # Create the service entity for the Identity service:
-	keystone service-create --name keystone --type identity \
-            --description "OpenStack Identity Service"
-        # Create the API endpoint for the Identity service:
-	keystone endpoint-create \
-            --service-id `keystone service-list | awk '/ identity / {print $2}'` \
-            --publicurl http://$CONTROLLER:5000/v2.0 \
-            --internalurl http://$CONTROLLER:5000/v2.0 \
-            --adminurl http://$CONTROLLER:${KADMINPORT}/v2.0 \
-            --region $REGION
-    else
-	__openstack service create \
-	    --name keystone --description "OpenStack Identity" identity
-
-	if [ $KEYSTONEAPIVERSION -lt 3 ]; then
-	    __openstack endpoint create \
-		--publicurl http://${CONTROLLER}:5000/${KAPISTR} \
-		--internalurl http://${CONTROLLER}:5000/${KAPISTR} \
-		--adminurl http://${CONTROLLER}:${KADMINPORT}/${KAPISTR} \
-		--region $REGION identity
-	else
-	    __openstack endpoint create --region $REGION \
-		identity public http://${CONTROLLER}:5000/${KAPISTR}
-	    __openstack endpoint create --region $REGION \
-		identity internal http://${CONTROLLER}:5000/${KAPISTR}
-	    __openstack endpoint create --region $REGION \
-		identity admin http://${CONTROLLER}:${KADMINPORT}/${KAPISTR}
-	fi
-    fi
-
     if [ "x${ADMIN_PASS}" = "x" ]; then
-        # Create the admin user -- temporarily use the random one for
-        # ${ADMIN_API}; we change it right away below manually via sql
+        # Choose the password for the admin user -- temporarily use the
+        # random one for ${ADMIN_API}; we change it right away below
+        # manually via sql
 	APSWD="${ADMIN_API_PASS}"
     else
 	APSWD="${ADMIN_PASS}"
     fi
 
-    if [ $OSVERSION -eq $OSJUNO ]; then
-        # Create the admin tenant
-	keystone tenant-create --name admin --description "Admin Tenant"
-	keystone user-create --name admin --pass "${APSWD}" \
-	    --email "${SWAPPER_EMAIL}"
-        # Create the admin role
-	keystone role-create --name admin
-        # Add the admin tenant and user to the admin role:
-	keystone user-role-add --tenant admin --user admin --role admin
-        # Create the _member_ role:
-	keystone role-create --name _member_
-        # Add the admin tenant and user to the _member_ role:
-	keystone user-role-add --tenant admin --user admin --role _member_
+    # Create admin token for manual bootstrap for < Train
+    if [ $OSVERSION -lt $OSTRAIN ]; then
+	if [ $OSVERSION -lt $OSKILO ]; then
+	    export OS_SERVICE_TOKEN=$ADMIN_TOKEN
+	    export OS_SERVICE_ENDPOINT=http://$CONTROLLER:${KADMINPORT}/$KAPISTR
+	elif [ $OSVERSION -lt $OSTRAIN ]; then
+	    export OS_TOKEN=$ADMIN_TOKEN
+	    export OS_URL=http://$CONTROLLER:${KADMINPORT}/$KAPISTR
 
-        # Create the adminapi user
-	keystone user-create --name ${ADMIN_API} --pass ${ADMIN_API_PASS} \
-	    --email "${SWAPPER_EMAIL}"
-	keystone user-role-add --tenant admin --user ${ADMIN_API} --role admin
-	keystone user-role-add --tenant admin --user ${ADMIN_API} --role _member_
-    else
-	if [ $OSVERSION -ge $OSMITAKA ]; then
-	    openstack domain create --description "Default Domain" default
+	    if [ "x$KEYSTONEAPIVERSION" = "x3" ]; then
+		export OS_IDENTITY_API_VERSION=3
+	    else
+		export OS_IDENTITY_API_VERSION=2.0
+	    fi
 	fi
 
-	__openstack project create $DOMARG --description "Admin Project" admin
-	__openstack user create $DOMARG --password "${APSWD}" \
-	    --email "${SWAPPER_EMAIL}" admin
-	__openstack role create admin
-	__openstack role add --project admin --user admin admin
+	if [ $OSVERSION -lt $OSKILO ]; then
+            # Create the service tenant:
+	    keystone tenant-create --name service --description "Service Tenant"
+            # Create the service entity for the Identity service:
+	    keystone service-create --name keystone --type identity \
+                --description "OpenStack Identity Service"
+            # Create the API endpoint for the Identity service:
+	    keystone endpoint-create \
+                --service-id `keystone service-list | awk '/ identity / {print $2}'` \
+                --publicurl http://$CONTROLLER:5000/v2.0 \
+                --internalurl http://$CONTROLLER:5000/v2.0 \
+                --adminurl http://$CONTROLLER:${KADMINPORT}/v2.0 \
+                --region $REGION
+	else
+	    __openstack service create \
+	        --name keystone --description "OpenStack Identity" identity
+
+	    if [ $KEYSTONEAPIVERSION -lt 3 ]; then
+		__openstack endpoint create \
+	    	    --publicurl http://${CONTROLLER}:5000/${KAPISTR} \
+	    	    --internalurl http://${CONTROLLER}:5000/${KAPISTR} \
+		    --adminurl http://${CONTROLLER}:${KADMINPORT}/${KAPISTR} \
+		    --region $REGION identity
+	    else
+	        __openstack endpoint create --region $REGION \
+		    identity public http://${CONTROLLER}:5000/${KAPISTR}
+		__openstack endpoint create --region $REGION \
+		    identity internal http://${CONTROLLER}:5000/${KAPISTR}
+		__openstack endpoint create --region $REGION \
+		    identity admin http://${CONTROLLER}:${KADMINPORT}/${KAPISTR}
+	    fi
+	fi
+
+	if [ $OSVERSION -eq $OSJUNO ]; then
+            # Create the admin tenant
+	    keystone tenant-create --name admin --description "Admin Tenant"
+	    keystone user-create --name admin --pass "${APSWD}" \
+	        --email "${SWAPPER_EMAIL}"
+            # Create the admin role
+	    keystone role-create --name admin
+            # Add the admin tenant and user to the admin role:
+	    keystone user-role-add --tenant admin --user admin --role admin
+            # Create the _member_ role:
+	    keystone role-create --name _member_
+            # Add the admin tenant and user to the _member_ role:
+	    keystone user-role-add --tenant admin --user admin --role _member_
+
+            # Create the adminapi user
+	    keystone user-create --name ${ADMIN_API} --pass ${ADMIN_API_PASS} \
+	        --email "${SWAPPER_EMAIL}"
+	    keystone user-role-add --tenant admin --user ${ADMIN_API} --role admin
+	    keystone user-role-add --tenant admin --user ${ADMIN_API} --role _member_
+	else
+	    if [ $OSVERSION -ge $OSMITAKA ]; then
+		openstack domain create --description "Default Domain" default
+	    fi
+
+	    __openstack project create $DOMARG --description "Admin Project" admin
+	    __openstack user create $DOMARG --password "${APSWD}" \
+	        --email "${SWAPPER_EMAIL}" admin
+	    __openstack role create admin
+	    __openstack role add --project admin --user admin admin
+
+	    __openstack role create user
+	    __openstack role add --project admin --user admin user
+
+	    __openstack project create $DOMARG --description "Service Project" service
+
+            # Create the adminapi user
+	    __openstack user create $DOMARG --password ${ADMIN_API_PASS} \
+	        --email "${SWAPPER_EMAIL}" ${ADMIN_API}
+	    __openstack role add --project admin --user ${ADMIN_API} admin
+	    __openstack role add --project admin --user ${ADMIN_API} user
+	fi
+    else
+	# Use keystone bootstrap for >= Train.
+	/usr/bin/keystone-manage bootstrap \
+	    --bootstrap-password "${APSWD}" \
+	    --bootstrap-username admin \
+	    --bootstrap-project-name admin \
+	    --bootstrap-role-name admin \
+	    --bootstrap-service-name identity \
+	    --bootstrap-admin-url http://${CONTROLLER}:${KADMINPORT}/${KAPISTR} \
+	    --bootstrap-internal-url http://${CONTROLLER}:5000/${KAPISTR} \
+	    --bootstrap-public-url http://${CONTROLLER}:5000/${KAPISTR} \
+	    --bootstrap-region-id $REGION
+
+	# We need our real credentials post-bootstrap.
+	export_credentials
+	# ... except we need the real `admin` user and password, until
+	# the adminapi user is created next.  This is changed below by
+	# another call to export_credentials after the keystone config
+	# block we're in.
+	export OS_USERNAME=admin
+	export OS_PASSWORD=${APSWD}
 
 	__openstack role create user
 	__openstack role add --project admin --user admin user
@@ -702,7 +859,6 @@ EOF
 	__openstack role add --project admin --user ${ADMIN_API} user
     fi
 
-
     if [ "x${ADMIN_PASS}" = "x" ]; then
         #
         # Update the admin user with the passwd hash from our config
@@ -713,7 +869,7 @@ EOF
 
     if [ $OSVERSION -lt $OSKILO ]; then
 	unset OS_SERVICE_TOKEN OS_SERVICE_ENDPOINT
-    else
+    elif [ $OSVERSION -lt $OSTRAIN ]; then
 	unset OS_TOKEN OS_URL
 	unset OS_IDENTITY_API_VERSION
     fi
@@ -728,115 +884,10 @@ EOF
     logtend "keystone"
 fi
 
-#
-# Create the admin-openrc.{sh,py} files.
-#
-echo "export OS_TENANT_NAME=admin" > $OURDIR/admin-openrc-oldcli.sh
-echo "export OS_USERNAME=${ADMIN_API}" >> $OURDIR/admin-openrc-oldcli.sh
-echo "export OS_PASSWORD=${ADMIN_API_PASS}" >> $OURDIR/admin-openrc-oldcli.sh
-echo "export OS_AUTH_URL=http://$CONTROLLER:${KADMINPORT}/v2.0" >> $OURDIR/admin-openrc-oldcli.sh
-
-echo "OS_TENANT_NAME=\"admin\"" > $OURDIR/admin-openrc-oldcli.py
-echo "OS_USERNAME=\"${ADMIN_API}\"" >> $OURDIR/admin-openrc-oldcli.py
-echo "OS_PASSWORD=\"${ADMIN_API_PASS}\"" >> $OURDIR/admin-openrc-oldcli.py
-echo "OS_AUTH_URL=\"http://$CONTROLLER:${KADMINPORT}/v2.0\"" >> $OURDIR/admin-openrc-oldcli.py
-if [ "x$KEYSTONEAPIVERSION" = "x3" ]; then
-    echo "OS_IDENTITY_API_VERSION=3" >> $OURDIR/admin-openrc-oldcli.py
-else
-    echo "OS_IDENTITY_API_VERSION=2.0" >> $OURDIR/admin-openrc-oldcli.py
-fi
-
-#
-# These trigger a bug with the openstack client -- it doesn't choose v2.0
-# if they're set.
-#
-if [ "x$KEYSTONEAPIVERSION" = "x3" ]; then
-    if [ $OSVERSION -lt $OSMITAKA ]; then
-	echo "export OS_PROJECT_DOMAIN_ID=default" > $OURDIR/admin-openrc-newcli.sh
-	echo "export OS_USER_DOMAIN_ID=default" >> $OURDIR/admin-openrc-newcli.sh
-    else
-	echo "export OS_PROJECT_DOMAIN_NAME=default" > $OURDIR/admin-openrc-newcli.sh
-	echo "export OS_USER_DOMAIN_NAME=default" >> $OURDIR/admin-openrc-newcli.sh
-    fi
-fi
-echo "export OS_PROJECT_NAME=admin" >> $OURDIR/admin-openrc-newcli.sh
-echo "export OS_TENANT_NAME=admin" >> $OURDIR/admin-openrc-newcli.sh
-echo "export OS_USERNAME=${ADMIN_API}" >> $OURDIR/admin-openrc-newcli.sh
-echo "export OS_PASSWORD=${ADMIN_API_PASS}" >> $OURDIR/admin-openrc-newcli.sh
-echo "export OS_AUTH_URL=http://$CONTROLLER:${KADMINPORT}/${KAPISTR}" >> $OURDIR/admin-openrc-newcli.sh
-if [ "x$KEYSTONEAPIVERSION" = "x3" ]; then
-    echo "export OS_IDENTITY_API_VERSION=3" >> $OURDIR/admin-openrc-newcli.sh
-else
-    echo "export OS_IDENTITY_API_VERSION=2.0" >> $OURDIR/admin-openrc-newcli.sh
-fi
-if [ $OSVERSION -ge $OSNEWTON ]; then
-    echo "export OS_IMAGE_API_VERSION=2" >> $OURDIR/admin-openrc-newcli.sh
-fi
-if [ $OSVERSION -ge $OSQUEENS ]; then
-    echo "export OS_AUTH_TYPE=password" >> $OURDIR/admin-openrc-newcli.sh
-fi
-
-if [ "x$KEYSTONEAPIVERSION" = "x3" ]; then
-    if [ $OSVERSION -lt $OSMITAKA ]; then
-	echo "OS_PROJECT_DOMAIN_ID=\"default\"" > $OURDIR/admin-openrc-newcli.py
-	echo "OS_USER_DOMAIN_ID=\"default\"" >> $OURDIR/admin-openrc-newcli.py
-    else
-	echo "OS_PROJECT_DOMAIN_NAME=\"default\"" > $OURDIR/admin-openrc-newcli.py
-	echo "OS_USER_DOMAIN_NAME=\"default\"" >> $OURDIR/admin-openrc-newcli.py
-    fi
-fi
-echo "OS_PROJECT_NAME=\"admin\"" >> $OURDIR/admin-openrc-newcli.py
-echo "OS_TENANT_NAME=\"admin\"" >> $OURDIR/admin-openrc-newcli.py
-echo "OS_USERNAME=\"${ADMIN_API}\"" >> $OURDIR/admin-openrc-newcli.py
-echo "OS_PASSWORD=\"${ADMIN_API_PASS}\"" >> $OURDIR/admin-openrc-newcli.py
-echo "OS_AUTH_URL=\"http://$CONTROLLER:${KADMINPORT}/${KAPISTR}\"" >> $OURDIR/admin-openrc-newcli.py
-if [ "x$KEYSTONEAPIVERSION" = "x3" ]; then
-    echo "OS_IDENTITY_API_VERSION=3" >> $OURDIR/admin-openrc-newcli.py
-else
-    echo "OS_IDENTITY_API_VERSION=2.0" >> $OURDIR/admin-openrc-newcli.py
-fi
-if [ $OSVERSION -ge $OSNEWTON ]; then
-    echo "OS_IMAGE_API_VERSION=2" >> $OURDIR/admin-openrc-newcli.py
-fi
-if [ $OSVERSION -ge $OSQUEENS ]; then
-    echo "OS_AUTH_TYPE='password'" >> $OURDIR/admin-openrc-newcli.py
-fi
-
-#
-# From here on out, we need to be the adminapi user.
-#
-if [ $OSVERSION -eq $OSJUNO ]; then
-    export OS_TENANT_NAME=admin
-    export OS_USERNAME=${ADMIN_API}
-    export OS_PASSWORD=${ADMIN_API_PASS}
-    export OS_AUTH_URL=http://$CONTROLLER:${KADMINPORT}/${KAPISTR}
-
-    ln -sf $OURDIR/admin-openrc-oldcli.sh $OURDIR/admin-openrc.sh
-    ln -sf $OURDIR/admin-openrc-oldcli.py $OURDIR/admin-openrc.py
-else
-    if [ "x$KEYSTONEAPIVERSION" = "x3" ]; then
-	if [ $OSVERSION -lt $OSMITAKA ]; then
-	    export OS_PROJECT_DOMAIN_ID=default
-	    export OS_USER_DOMAIN_ID=default
-	else
-	    export OS_PROJECT_DOMAIN_NAME=default
-	    export OS_USER_DOMAIN_NAME=default
-	fi
-    fi
-    export OS_PROJECT_NAME=admin
-    export OS_TENANT_NAME=admin
-    export OS_USERNAME=${ADMIN_API}
-    export OS_PASSWORD=${ADMIN_API_PASS}
-    export OS_AUTH_URL=http://${CONTROLLER}:${KADMINPORT}/${KAPISTR}
-    if [ "x$KEYSTONEAPIVERSION" = "x3" ]; then
-	export OS_IDENTITY_API_VERSION=3
-    else
-	export OS_IDENTITY_API_VERSION=2.0
-    fi
-
-    ln -sf $OURDIR/admin-openrc-newcli.sh $OURDIR/admin-openrc.sh
-    ln -sf $OURDIR/admin-openrc-newcli.py $OURDIR/admin-openrc.py
-fi
+# Write our credential files if they don't exist.
+make_credential_files
+# Export our admin creds into the environment.  Might already be done.
+export_credentials
 
 #
 # Install the Image service
