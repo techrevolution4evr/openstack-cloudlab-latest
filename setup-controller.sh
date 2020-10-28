@@ -1552,7 +1552,7 @@ if [ -z "${NEUTRON_DBPASS}" ]; then
     fi
 
     maybe_install_packages neutron-server neutron-plugin-ml2 ${PYPKGPREFIX}-neutronclient
-    if [ $USE_NEUTRON_LBAAS -eq 1 -a $OSVERSION -ge $OSNEWTON ]; then
+    if [ $USE_NEUTRON_LBAAS -eq 1 ]; then
 	maybe_install_packages ${PYPKGPREFIX}-neutron-lbaas
     fi
 
@@ -1578,7 +1578,7 @@ if [ -z "${NEUTRON_DBPASS}" ]; then
     crudini --set /etc/neutron/neutron.conf DEFAULT core_plugin ml2
     if [ $OSVERSION -lt $OSNEWTON ]; then
 	crudini --set /etc/neutron/neutron.conf DEFAULT service_plugins 'router,metering'
-    elif [ $USE_NEUTRON_LBAAS -eq 1 -a $OSVERSION -ge $OSNEWTON ]; then
+    elif [ $USE_NEUTRON_LBAAS -eq 1 ]; then
 	crudini --set /etc/neutron/neutron.conf DEFAULT service_plugins \
 	    'router,metering,neutron_lbaas.services.loadbalancer.plugin.LoadBalancerPluginv2'
     else
@@ -1747,7 +1747,7 @@ EOF
 	    firewall_driver $fwdriver
     fi
 
-    if [ $USE_NEUTRON_LBAAS -eq 1 -a $OSVERSION -ge $OSNEWTON ]; then
+    if [ $USE_NEUTRON_LBAAS -eq 1 ]; then
 	crudini --set /etc/neutron/neutron_lbaas.conf service_providers \
 	    service_provider "LOADBALANCERV2:Haproxy:neutron_lbaas.drivers.haproxy.plugin_driver.HaproxyOnHostPluginDriver:default"
     fi
@@ -1822,7 +1822,7 @@ EOF
 
     # Install the neutron lbaas dashboard panel, and update the neutron
     # db for lbaas.
-    if [ $USE_NEUTRON_LBAAS -eq 1 -a $OSVERSION -ge $OSNEWTON ]; then
+    if [ $USE_NEUTRON_LBAAS -eq 1 ]; then
 	maybe_install_packages ${PYPKGPREFIX}-neutron-lbaas-dashboard
 	if [ $? -eq 1 ]; then
 	    git clone https://git.openstack.org/openstack/neutron-lbaas-dashboard

@@ -120,7 +120,7 @@ LINUXBRIDGE_STATIC=0
 # control net DNS server).  The local domain will also be searched prior
 # to the cluster's domain.
 USE_DESIGNATE_AS_RESOLVER=1
-# If set to 1, and if OSRELEASE >= OSNEWTON, then setup Neutron LBaaS.
+# If set to 1, and if OSRELEASE >= OSNEWTON && < OSTRAIN, then setup Neutron LBaaS.
 USE_NEUTRON_LBAAS=1
 # We are not currently using the ceilometer stats, and they do not work
 # as of Pike due to the switch to Gnocchi as the measurement DB.
@@ -291,6 +291,14 @@ if [ ! -e $OURDIR/parameters ]; then
     fi
 fi
 . $OURDIR/parameters
+
+#
+# Fix up parameter values that we might not be able to support.
+#
+if [ $USE_NEUTRON_LBAAS -a \( $OSVERSION -lt $OSNEWTON -o $OSVERSION -gt $OSSTEIN \) ]; then
+    echo "WARNING: cannot enable Neutron LBaaS on $OSRELEASE"
+    USE_NEUTRON_LBAAS=0
+fi
 
 #
 # Ok, to be absolutely safe, if the ADMIN_PASS_HASH we got from params was "",
