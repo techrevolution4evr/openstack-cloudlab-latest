@@ -31,7 +31,7 @@ cd $IMAGEDIR
 
 for drel in xenial bionic ; do
     echo "*** Configuring a ${drel}-server x86_64 image ..."
-    imgfile=${drel}-server-cloudimg-amd64-disk1.img
+    imgfile=${drel}-server-cloudimg-amd64.img
     imgname=${drel}-server
     #
     # First try the local boss, then Apt, then just grab from Ubuntu.

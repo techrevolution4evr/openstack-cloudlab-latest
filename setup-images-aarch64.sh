@@ -30,14 +30,14 @@ fi
 cd $IMAGEDIR
 
 for drel in xenial bionic ; do
-    imgfile=`get_url "http://boss.utah.cloudlab.us/downloads/openstack/${drel}-server-cloudimg-arm64-disk1.img https://cloud-images.ubuntu.com/${drel}/current/${drel}-server-cloudimg-arm64-disk1.img"`
+    imgfile=`get_url "http://boss.utah.cloudlab.us/downloads/openstack/${drel}-server-cloudimg-arm64.img https://cloud-images.ubuntu.com/${drel}/current/${drel}-server-cloudimg-arm64.img"`
     imgname=${drel}-server
     if [ ! $? -eq 0 ]; then
-	echo "ERROR: failed to download ${drel}-server-cloudimg-arm64-disk1.img from Cloudlab or Ubuntu!"
+	echo "ERROR: failed to download ${drel}-server-cloudimg-arm64.img from Cloudlab or Ubuntu!"
     else
 	imgfile=`extract_image "$imgfile"`
 	if [ ! $? -eq 0 ]; then
-	    echo "ERROR: failed to extract ${drel}-server-cloudimg-arm64-disk1.img"
+	    echo "ERROR: failed to extract ${drel}-server-cloudimg-arm64.img"
 	else
 	    (fixup_image "$imgfile" \
 	        && sched_image "$IMAGEDIR/$imgfile" "$imgname" ) \
