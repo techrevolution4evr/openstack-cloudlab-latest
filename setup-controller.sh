@@ -1371,8 +1371,13 @@ EOF
     fi
 
     if [ $OSVERSION -ge $OSOCATA ]; then
-	crudini --set /etc/nova/nova.conf placement \
-	    os_region_name $REGION
+	if [ $OSVERSION -ge $OSTRAIN ]; then
+	    crudini --set /etc/nova/nova.conf placement \
+  		region_name $REGION
+	else
+	    crudini --set /etc/nova/nova.conf placement \
+	        os_region_name $REGION
+	fi
 	crudini --set /etc/nova/nova.conf placement \
 	    auth_url http://${CONTROLLER}:${KADMINPORT}/v3
 	crudini --set /etc/nova/nova.conf placement \
@@ -1387,6 +1392,34 @@ EOF
 	    username placement
 	crudini --set /etc/nova/nova.conf placement \
 	    password "${PLACEMENT_PASS}"
+    fi
+
+    if [ $OSVERSION -ge $OSTRAIN ]; then
+	crudini --set /etc/placement/placement.conf placement_database connection \
+	    "${DBDSTRING}://placement:$PLACEMENT_DBPASS@$CONTROLLER/placement"
+	crudini --set /etc/placement/placement.conf api auth_strategy keystone
+	crudini --set /etc/placement/placement.conf keystone_authtoken \
+	    auth_url http://${CONTROLLER}:${KADMINPORT}/v3
+	crudini --set /etc/placement/placement.conf keystone_authtoken \
+	    ${AUTH_TYPE_PARAM} password
+	crudini --set /etc/placement/placement.conf keystone_authtoken \
+	    ${PROJECT_DOMAIN_PARAM} default
+	crudini --set /etc/placement/placement.conf keystone_authtoken \
+	    ${USER_DOMAIN_PARAM} default
+	crudini --set /etc/placement/placement.conf keystone_authtoken \
+	    project_name service
+	crudini --set /etc/placement/placement.conf keystone_authtoken \
+	    username placement
+	crudini --set /etc/placement/placement.conf keystone_authtoken \
+	    password "${PLACEMENT_PASS}"
+	if [ $KEYSTONEUSEMEMCACHE -eq 1 ]; then
+	    crudini --set /etc/placement/placement.conf keystone_authtoken \
+	        memcached_servers ${CONTROLLER}:11211
+	fi
+    fi
+
+    if [ $OSVERSION -ge $OSTRAIN ]; then
+	su -s /bin/sh -c "placement-manage db sync" placement
     fi
 
     if [ $OSVERSION -ge $OSMITAKA ]; then
