@@ -1199,7 +1199,10 @@ if [ -z "${NOVA_DBPASS}" ]; then
     if [ $OSVERSION -lt $OSQUEENS ]; then
 	maybe_install_packages nova-cert
     fi
-    if [ $OSVERSION -ge $OSOCATA ]; then
+    if [ $OSVERSION -ge $OSTRAIN ]; then
+	maybe_install_packages placement-api
+	a2ensite placement-api
+    elif [ $OSVERSION -ge $OSOCATA ]; then
 	maybe_install_packages nova-placement-api
     fi
     
@@ -1413,8 +1416,11 @@ EOF
     service_enable nova-novncproxy
     service_restart nova-serialproxy
     service_enable nova-serialproxy
-    if [ $OSVERSION -ge $OSOCATA ]; then
-	a2ensite nova-placement-api.conf
+    if [ $OSVERSION -ge $OSTRAIN ]; then
+	a2ensite placement-api
+	service apache2 reload
+    elif [ $OSVERSION -ge $OSOCATA ]; then
+	a2ensite nova-placement-api
 	service apache2 reload
     else
 	service_restart nova-placement-api
