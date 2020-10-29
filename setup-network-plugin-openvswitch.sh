@@ -144,9 +144,9 @@ crudini --set /etc/neutron/plugins/ml2/ml2_conf.ini ml2 \
     tenant_network_types ${network_types}
 crudini --set /etc/neutron/plugins/ml2/ml2_conf.ini ml2 \
     mechanism_drivers openvswitch
-extdrivers=
+extdrivers="port_security"
 if [ $OSVERSION -ge $OSNEWTON ]; then
-    extdrivers="dns"
+    extdrivers="${extdrivers},dns"
 fi
 if [ -n "$extdrivers" ]; then
     crudini --set /etc/neutron/plugins/ml2/ml2_conf.ini ml2 \
