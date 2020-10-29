@@ -3607,6 +3607,7 @@ if [ $OSVERSION -ge $OSPIKE -a -z "${TELEMETRY_GRAFANA_DONE}" ]; then
     grafana-cli \
 	--config /etc/grafana/grafana.ini --homepath /usr/share/grafana \
 	admin reset-admin-password "$GPASSWD"
+    chown -R grafana:grafana /var/log/grafana
     service_restart grafana-server
 
     #
@@ -3634,6 +3635,7 @@ if [ $OSVERSION -ge $OSPIKE -a -z "${TELEMETRY_GRAFANA_DONE}" ]; then
     # Install the gnocchi plugin
     grafana-cli plugins install gnocchixyz-gnocchi-datasource
     chown -R grafana:grafana /var/lib/grafana/grafana.db
+    chown -R grafana:grafana /var/log/grafana
     service_restart grafana-server
 
     # Add the token-based datasource
