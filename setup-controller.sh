@@ -3632,15 +3632,13 @@ if [ $OSVERSION -ge $OSPIKE -a -z "${TELEMETRY_GRAFANA_DONE}" ]; then
     crudini --set /etc/grafana/grafana.ini security admin_user admin
     crudini --set /etc/grafana/grafana.ini security admin_password "${GPASSWD}"
 
-    chown -R grafana:grafana /var/lib/grafana/grafana.db
-    service_enable grafana-server
-    service_restart grafana-server
+    chown -R grafana:grafana /var/lib/grafana /var/log/grafana
     # Try an initial password reset to force the DB schema to be populated;
     # apparently just starting grafana-server doesn't do that.
     grafana-cli \
 	--config /etc/grafana/grafana.ini --homepath /usr/share/grafana \
 	admin reset-admin-password "$GPASSWD"
-    chown -R grafana:grafana /var/log/grafana
+    chown -R grafana:grafana /var/lib/grafana /var/log/grafana
     service_restart grafana-server
 
     #
