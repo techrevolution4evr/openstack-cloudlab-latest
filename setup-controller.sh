@@ -108,6 +108,16 @@ fi
 #
 if [ -z "${DB_ROOT_PASS}" ]; then
     logtstart "database"
+
+    # Use updated mariadb repos to handle alembic migrations in train
+    # that require mariadb 10.3; bionic version is 10.1 .
+    if [ $OSVERSION -ge $OSTRAIN -a "${DISTRIB_CODENAME}" = "bionic" ]; then
+	maybe_install_packages software-properties-common
+        apt-key adv --fetch-keys 'https://mariadb.org/mariadb_release_signing_key.asc'
+	add-apt-repository -y 'deb [arch=amd64,arm64,ppc64el] https://mariadb.mirror.liquidtelecom.com/repo/10.3/ubuntu bionic main'
+	apt-get update
+    fi
+
     maybe_install_packages mariadb-server $DBDPACKAGE
     service_stop mysql
     # Change the root password; secure the users/dbs.
