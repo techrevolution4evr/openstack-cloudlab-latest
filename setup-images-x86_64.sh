@@ -29,26 +29,28 @@ fi
 
 cd $IMAGEDIR
 
-echo "*** Configuring a xenial-server x86_64 image ..."
-imgfile=xenial-server-cloudimg-amd64-disk1.img
-imgname=xenial-server
-#
-# First try the local boss, then Apt, then just grab from Ubuntu.
-#
-imgfile=`get_url "http://boss.${OURDOMAIN}/downloads/openstack/$imgfile http://boss.apt.emulab.net/downloads/openstack/$imgfile https://cloud-images.ubuntu.com/xenial/current/$imgfile"`
-if [ ! $? -eq 0 ]; then
-    echo "ERROR: failed to download $imgfile from Cloudlab or Ubuntu!"
-else
-    old="$imgfile"
-    imgfile=`extract_image "$imgfile"`
+for drel in xenial bionic ; do
+    echo "*** Configuring a ${drel}-server x86_64 image ..."
+    imgfile=${drel}-server-cloudimg-amd64-disk1.img
+    imgname=${drel}-server
+    #
+    # First try the local boss, then Apt, then just grab from Ubuntu.
+    #
+    imgfile=`get_url "http://boss.${OURDOMAIN}/downloads/openstack/$imgfile http://boss.apt.emulab.net/downloads/openstack/$imgfile https://cloud-images.ubuntu.com/${drel}/current/$imgfile"`
     if [ ! $? -eq 0 ]; then
-	echo "ERROR: failed to extract $old"
+	echo "ERROR: failed to download $imgfile from Cloudlab or Ubuntu!"
     else
-	(fixup_image "$imgfile" \
-	    && sched_image "$IMAGEDIR/$imgfile" "$imgname" ) \
-	    || echo "ERROR: could not configure default VM image $imgfile !"
+	old="$imgfile"
+	imgfile=`extract_image "$imgfile"`
+	if [ ! $? -eq 0 ]; then
+	    echo "ERROR: failed to extract $old"
+	else
+	    (fixup_image "$imgfile" \
+	        && sched_image "$IMAGEDIR/$imgfile" "$imgname" ) \
+		|| echo "ERROR: could not configure default VM image $imgfile !"
+	fi
     fi
-fi
+done
 
 #
 # Setup the Manila service image so that Manila works out of the box.

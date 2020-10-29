@@ -29,20 +29,22 @@ fi
 
 cd $IMAGEDIR
 
-imgfile=`get_url "http://boss.utah.cloudlab.us/downloads/openstack/xenial-server-cloudimg-arm64-disk1.img https://cloud-images.ubuntu.com/xenial/current/xenial-server-cloudimg-arm64-disk1.img"`
-imgname=xenial-server
-if [ ! $? -eq 0 ]; then
-    echo "ERROR: failed to download xenial-server-cloudimg-arm64-disk1.img from Cloudlab or Ubuntu!"
-else
-    imgfile=`extract_image "$imgfile"`
+for drel in xenial bionic ; do
+    imgfile=`get_url "http://boss.utah.cloudlab.us/downloads/openstack/${drel}-server-cloudimg-arm64-disk1.img https://cloud-images.ubuntu.com/${drel}/current/${drel}-server-cloudimg-arm64-disk1.img"`
+    imgname=${drel}-server
     if [ ! $? -eq 0 ]; then
-	echo "ERROR: failed to extract xenial-server-cloudimg-arm64-disk1.img"
+	echo "ERROR: failed to download ${drel}-server-cloudimg-arm64-disk1.img from Cloudlab or Ubuntu!"
     else
-	(fixup_image "$imgfile" \
-	    && sched_image "$IMAGEDIR/$imgfile" "$imgname" ) \
-	    || echo "ERROR: could not configure default VM image $imgfile !"
+	imgfile=`extract_image "$imgfile"`
+	if [ ! $? -eq 0 ]; then
+	    echo "ERROR: failed to extract ${drel}-server-cloudimg-arm64-disk1.img"
+	else
+	    (fixup_image "$imgfile" \
+	        && sched_image "$IMAGEDIR/$imgfile" "$imgname" ) \
+		|| echo "ERROR: could not configure default VM image $imgfile !"
+	fi
     fi
-fi
+done
 
 #
 # NB: do not exit; we are included!
