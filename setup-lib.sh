@@ -533,7 +533,10 @@ fi
 #
 # Set the database package name and driver string.
 #
-if [ $OSVERSION -ge $OSNEWTON ]; then
+if [ $OSVERSION -ge $OSUSSURI ]; then
+    DBDPACKAGE="${PYPKGPREFIX}-pymysql"
+    DBDSTRING="mysql+pymysql"
+elif [ $OSVERSION -ge $OSNEWTON ]; then
     DBDPACKAGE="python-pymysql"
     DBDSTRING="mysql+pymysql"
 else

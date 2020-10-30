@@ -118,7 +118,8 @@ if [ -z "${DB_ROOT_PASS}" ]; then
 	apt-get update
     fi
 
-    maybe_install_packages mariadb-server $DBDPACKAGE
+    maybe_install_packages $DBDPACKAGE
+    maybe_install_packages mariadb-server
     service_stop mysql
     # Change the root password; secure the users/dbs.
     mysqld_safe --skip-grant-tables --skip-networking &
