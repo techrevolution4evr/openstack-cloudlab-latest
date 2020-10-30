@@ -59,7 +59,7 @@ crudini --set /etc/neutron/neutron.conf DEFAULT auth_strategy keystone
 crudini --set /etc/neutron/neutron.conf DEFAULT verbose ${VERBOSE_LOGGING}
 crudini --set /etc/neutron/neutron.conf DEFAULT debug ${DEBUG_LOGGING}
 crudini --set /etc/neutron/neutron.conf DEFAULT core_plugin ml2
-if [ $USE_NEUTRON_LBAAS -eq 1 -a $OSVERSION -ge $OSNEWTON ]; then
+if [ $USE_NEUTRON_LBAAS -eq 1 ]; then
     crudini --set /etc/neutron/neutron.conf DEFAULT service_plugins \
         'router,metering,neutron_lbaas.services.loadbalancer.plugin.LoadBalancerPluginv2'
 else
@@ -144,9 +144,9 @@ crudini --set /etc/neutron/plugins/ml2/ml2_conf.ini ml2 \
     tenant_network_types ${network_types}
 crudini --set /etc/neutron/plugins/ml2/ml2_conf.ini ml2 \
     mechanism_drivers openvswitch
-extdrivers=
+extdrivers="port_security"
 if [ $OSVERSION -ge $OSNEWTON ]; then
-    extdrivers="dns"
+    extdrivers="${extdrivers},dns"
 fi
 if [ -n "$extdrivers" ]; then
     crudini --set /etc/neutron/plugins/ml2/ml2_conf.ini ml2 \

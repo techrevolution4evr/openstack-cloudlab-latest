@@ -108,6 +108,16 @@ fi
 #
 if [ -z "${DB_ROOT_PASS}" ]; then
     logtstart "database"
+
+    # Use updated mariadb repos to handle alembic migrations in train
+    # that require mariadb 10.3; bionic version is 10.1 .
+    if [ $OSVERSION -ge $OSTRAIN -a "${DISTRIB_CODENAME}" = "bionic" ]; then
+	maybe_install_packages software-properties-common
+        apt-key adv --fetch-keys 'https://mariadb.org/mariadb_release_signing_key.asc'
+	add-apt-repository -y 'deb [arch=amd64,arm64,ppc64el] https://mariadb.mirror.liquidtelecom.com/repo/10.3/ubuntu bionic main'
+	apt-get update
+    fi
+
     maybe_install_packages mariadb-server $DBDPACKAGE
     service_stop mysql
     # Change the root password; secure the users/dbs.
@@ -371,6 +381,128 @@ EOF
     logtend "etcd"
 fi
 
+make_credential_files() {
+    if [ -e $OURDIR/admin-openrc-newcli.sh \
+	 -a -e $OURDIR/admin-openrc-oldcli.sh \
+	 -a -e $OURDIR/admin-openrc-oldcli.py \
+	 -a -e $OURDIR/admin-openrc-newcli.py \
+	 -a -e $OURDIR/admin-openrc.sh \
+	 -a -e $OURDIR/admin-openrc.py ]; then
+	return
+    fi
+
+    #
+    # Create the admin-openrc.{sh,py} files.
+    #
+    echo "export OS_TENANT_NAME=admin" > $OURDIR/admin-openrc-oldcli.sh
+    echo "export OS_USERNAME=${ADMIN_API}" >> $OURDIR/admin-openrc-oldcli.sh
+    echo "export OS_PASSWORD=${ADMIN_API_PASS}" >> $OURDIR/admin-openrc-oldcli.sh
+    echo "export OS_AUTH_URL=http://$CONTROLLER:${KADMINPORT}/v2.0" >> $OURDIR/admin-openrc-oldcli.sh
+
+    echo "OS_TENANT_NAME=\"admin\"" > $OURDIR/admin-openrc-oldcli.py
+    echo "OS_USERNAME=\"${ADMIN_API}\"" >> $OURDIR/admin-openrc-oldcli.py
+    echo "OS_PASSWORD=\"${ADMIN_API_PASS}\"" >> $OURDIR/admin-openrc-oldcli.py
+    echo "OS_AUTH_URL=\"http://$CONTROLLER:${KADMINPORT}/v2.0\"" >> $OURDIR/admin-openrc-oldcli.py
+    if [ "x$KEYSTONEAPIVERSION" = "x3" ]; then
+	echo "OS_IDENTITY_API_VERSION=3" >> $OURDIR/admin-openrc-oldcli.py
+    else
+	echo "OS_IDENTITY_API_VERSION=2.0" >> $OURDIR/admin-openrc-oldcli.py
+    fi
+
+    #
+    # These trigger a bug with the openstack client -- it doesn't choose v2.0
+    # if they're set.
+    #
+    if [ "x$KEYSTONEAPIVERSION" = "x3" ]; then
+	if [ $OSVERSION -lt $OSMITAKA ]; then
+	    echo "export OS_PROJECT_DOMAIN_ID=default" > $OURDIR/admin-openrc-newcli.sh
+	    echo "export OS_USER_DOMAIN_ID=default" >> $OURDIR/admin-openrc-newcli.sh
+	else
+	    echo "export OS_PROJECT_DOMAIN_NAME=default" > $OURDIR/admin-openrc-newcli.sh
+	    echo "export OS_USER_DOMAIN_NAME=default" >> $OURDIR/admin-openrc-newcli.sh
+	fi
+    fi
+    echo "export OS_PROJECT_NAME=admin" >> $OURDIR/admin-openrc-newcli.sh
+    echo "export OS_TENANT_NAME=admin" >> $OURDIR/admin-openrc-newcli.sh
+    echo "export OS_USERNAME=${ADMIN_API}" >> $OURDIR/admin-openrc-newcli.sh
+    echo "export OS_PASSWORD=${ADMIN_API_PASS}" >> $OURDIR/admin-openrc-newcli.sh
+    echo "export OS_AUTH_URL=http://$CONTROLLER:${KADMINPORT}/${KAPISTR}" >> $OURDIR/admin-openrc-newcli.sh
+    if [ "x$KEYSTONEAPIVERSION" = "x3" ]; then
+	echo "export OS_IDENTITY_API_VERSION=3" >> $OURDIR/admin-openrc-newcli.sh
+    else
+	echo "export OS_IDENTITY_API_VERSION=2.0" >> $OURDIR/admin-openrc-newcli.sh
+    fi
+    if [ $OSVERSION -ge $OSNEWTON ]; then
+	echo "export OS_IMAGE_API_VERSION=2" >> $OURDIR/admin-openrc-newcli.sh
+    fi
+    if [ $OSVERSION -ge $OSQUEENS ]; then
+	echo "export OS_AUTH_TYPE=password" >> $OURDIR/admin-openrc-newcli.sh
+    fi
+
+    if [ "x$KEYSTONEAPIVERSION" = "x3" ]; then
+	if [ $OSVERSION -lt $OSMITAKA ]; then
+	    echo "OS_PROJECT_DOMAIN_ID=\"default\"" > $OURDIR/admin-openrc-newcli.py
+	    echo "OS_USER_DOMAIN_ID=\"default\"" >> $OURDIR/admin-openrc-newcli.py
+	else
+	    echo "OS_PROJECT_DOMAIN_NAME=\"default\"" > $OURDIR/admin-openrc-newcli.py
+	    echo "OS_USER_DOMAIN_NAME=\"default\"" >> $OURDIR/admin-openrc-newcli.py
+	fi
+    fi
+    echo "OS_PROJECT_NAME=\"admin\"" >> $OURDIR/admin-openrc-newcli.py
+    echo "OS_TENANT_NAME=\"admin\"" >> $OURDIR/admin-openrc-newcli.py
+    echo "OS_USERNAME=\"${ADMIN_API}\"" >> $OURDIR/admin-openrc-newcli.py
+    echo "OS_PASSWORD=\"${ADMIN_API_PASS}\"" >> $OURDIR/admin-openrc-newcli.py
+    echo "OS_AUTH_URL=\"http://$CONTROLLER:${KADMINPORT}/${KAPISTR}\"" >> $OURDIR/admin-openrc-newcli.py
+    if [ "x$KEYSTONEAPIVERSION" = "x3" ]; then
+	echo "OS_IDENTITY_API_VERSION=3" >> $OURDIR/admin-openrc-newcli.py
+    else
+	echo "OS_IDENTITY_API_VERSION=2.0" >> $OURDIR/admin-openrc-newcli.py
+    fi
+    if [ $OSVERSION -ge $OSNEWTON ]; then
+	echo "OS_IMAGE_API_VERSION=2" >> $OURDIR/admin-openrc-newcli.py
+    fi
+    if [ $OSVERSION -ge $OSQUEENS ]; then
+	echo "OS_AUTH_TYPE='password'" >> $OURDIR/admin-openrc-newcli.py
+    fi
+
+    if [ $OSVERSION -eq $OSJUNO ]; then
+	ln -sf $OURDIR/admin-openrc-oldcli.sh $OURDIR/admin-openrc.sh
+	ln -sf $OURDIR/admin-openrc-oldcli.py $OURDIR/admin-openrc.py
+    else
+	ln -sf $OURDIR/admin-openrc-newcli.sh $OURDIR/admin-openrc.sh
+	ln -sf $OURDIR/admin-openrc-newcli.py $OURDIR/admin-openrc.py
+    fi
+}
+
+export_credentials() {
+    if [ $OSVERSION -eq $OSJUNO ]; then
+	export OS_TENANT_NAME=admin
+	export OS_USERNAME=${ADMIN_API}
+	export OS_PASSWORD=${ADMIN_API_PASS}
+	export OS_AUTH_URL=http://$CONTROLLER:${KADMINPORT}/${KAPISTR}
+    else
+	if [ "x$KEYSTONEAPIVERSION" = "x3" ]; then
+	    if [ $OSVERSION -lt $OSMITAKA ]; then
+		export OS_PROJECT_DOMAIN_ID=default
+		export OS_USER_DOMAIN_ID=default
+	    else
+		export OS_PROJECT_DOMAIN_NAME=default
+		export OS_USER_DOMAIN_NAME=default
+	    fi
+	fi
+	export OS_PROJECT_NAME=admin
+	export OS_TENANT_NAME=admin
+	export OS_USERNAME=${ADMIN_API}
+	export OS_PASSWORD=${ADMIN_API_PASS}
+	export OS_AUTH_URL=http://${CONTROLLER}:${KADMINPORT}/${KAPISTR}
+	if [ "x$KEYSTONEAPIVERSION" = "x3" ]; then
+	    export OS_IDENTITY_API_VERSION=3
+	else
+	    export OS_IDENTITY_API_VERSION=2.0
+	fi
+    fi
+}
+
 #
 # Install the Identity Service
 #
@@ -604,91 +736,126 @@ EOF
         echo '@hourly /usr/bin/keystone-manage token_flush >/var/log/keystone/keystone-tokenflush.log 2>&1' \
         >> /var/spool/cron/crontabs/keystone
 
-    # Create admin token
-    if [ $OSVERSION -lt $OSKILO ]; then
-	export OS_SERVICE_TOKEN=$ADMIN_TOKEN
-	export OS_SERVICE_ENDPOINT=http://$CONTROLLER:${KADMINPORT}/$KAPISTR
-    else
-	export OS_TOKEN=$ADMIN_TOKEN
-	export OS_URL=http://$CONTROLLER:${KADMINPORT}/$KAPISTR
-
-	if [ "x$KEYSTONEAPIVERSION" = "x3" ]; then
-	    export OS_IDENTITY_API_VERSION=3
-	else
-	    export OS_IDENTITY_API_VERSION=2.0
-	fi
-    fi
-
-    if [ $OSVERSION -lt $OSKILO ]; then
-        # Create the service tenant:
-	keystone tenant-create --name service --description "Service Tenant"
-        # Create the service entity for the Identity service:
-	keystone service-create --name keystone --type identity \
-            --description "OpenStack Identity Service"
-        # Create the API endpoint for the Identity service:
-	keystone endpoint-create \
-            --service-id `keystone service-list | awk '/ identity / {print $2}'` \
-            --publicurl http://$CONTROLLER:5000/v2.0 \
-            --internalurl http://$CONTROLLER:5000/v2.0 \
-            --adminurl http://$CONTROLLER:${KADMINPORT}/v2.0 \
-            --region $REGION
-    else
-	__openstack service create \
-	    --name keystone --description "OpenStack Identity" identity
-
-	if [ $KEYSTONEAPIVERSION -lt 3 ]; then
-	    __openstack endpoint create \
-		--publicurl http://${CONTROLLER}:5000/${KAPISTR} \
-		--internalurl http://${CONTROLLER}:5000/${KAPISTR} \
-		--adminurl http://${CONTROLLER}:${KADMINPORT}/${KAPISTR} \
-		--region $REGION identity
-	else
-	    __openstack endpoint create --region $REGION \
-		identity public http://${CONTROLLER}:5000/${KAPISTR}
-	    __openstack endpoint create --region $REGION \
-		identity internal http://${CONTROLLER}:5000/${KAPISTR}
-	    __openstack endpoint create --region $REGION \
-		identity admin http://${CONTROLLER}:${KADMINPORT}/${KAPISTR}
-	fi
-    fi
-
     if [ "x${ADMIN_PASS}" = "x" ]; then
-        # Create the admin user -- temporarily use the random one for
-        # ${ADMIN_API}; we change it right away below manually via sql
+        # Choose the password for the admin user -- temporarily use the
+        # random one for ${ADMIN_API}; we change it right away below
+        # manually via sql
 	APSWD="${ADMIN_API_PASS}"
     else
 	APSWD="${ADMIN_PASS}"
     fi
 
-    if [ $OSVERSION -eq $OSJUNO ]; then
-        # Create the admin tenant
-	keystone tenant-create --name admin --description "Admin Tenant"
-	keystone user-create --name admin --pass "${APSWD}" \
-	    --email "${SWAPPER_EMAIL}"
-        # Create the admin role
-	keystone role-create --name admin
-        # Add the admin tenant and user to the admin role:
-	keystone user-role-add --tenant admin --user admin --role admin
-        # Create the _member_ role:
-	keystone role-create --name _member_
-        # Add the admin tenant and user to the _member_ role:
-	keystone user-role-add --tenant admin --user admin --role _member_
+    # Create admin token for manual bootstrap for < Train
+    if [ $OSVERSION -lt $OSTRAIN ]; then
+	if [ $OSVERSION -lt $OSKILO ]; then
+	    export OS_SERVICE_TOKEN=$ADMIN_TOKEN
+	    export OS_SERVICE_ENDPOINT=http://$CONTROLLER:${KADMINPORT}/$KAPISTR
+	elif [ $OSVERSION -lt $OSTRAIN ]; then
+	    export OS_TOKEN=$ADMIN_TOKEN
+	    export OS_URL=http://$CONTROLLER:${KADMINPORT}/$KAPISTR
 
-        # Create the adminapi user
-	keystone user-create --name ${ADMIN_API} --pass ${ADMIN_API_PASS} \
-	    --email "${SWAPPER_EMAIL}"
-	keystone user-role-add --tenant admin --user ${ADMIN_API} --role admin
-	keystone user-role-add --tenant admin --user ${ADMIN_API} --role _member_
-    else
-	if [ $OSVERSION -ge $OSMITAKA ]; then
-	    openstack domain create --description "Default Domain" default
+	    if [ "x$KEYSTONEAPIVERSION" = "x3" ]; then
+		export OS_IDENTITY_API_VERSION=3
+	    else
+		export OS_IDENTITY_API_VERSION=2.0
+	    fi
 	fi
 
-	__openstack project create $DOMARG --description "Admin Project" admin
-	__openstack user create $DOMARG --password "${APSWD}" \
-	    --email "${SWAPPER_EMAIL}" admin
-	__openstack role create admin
-	__openstack role add --project admin --user admin admin
+	if [ $OSVERSION -lt $OSKILO ]; then
+            # Create the service tenant:
+	    keystone tenant-create --name service --description "Service Tenant"
+            # Create the service entity for the Identity service:
+	    keystone service-create --name keystone --type identity \
+                --description "OpenStack Identity Service"
+            # Create the API endpoint for the Identity service:
+	    keystone endpoint-create \
+                --service-id `keystone service-list | awk '/ identity / {print $2}'` \
+                --publicurl http://$CONTROLLER:5000/v2.0 \
+                --internalurl http://$CONTROLLER:5000/v2.0 \
+                --adminurl http://$CONTROLLER:${KADMINPORT}/v2.0 \
+                --region $REGION
+	else
+	    __openstack service create \
+	        --name keystone --description "OpenStack Identity" identity
+
+	    if [ $KEYSTONEAPIVERSION -lt 3 ]; then
+		__openstack endpoint create \
+	    	    --publicurl http://${CONTROLLER}:5000/${KAPISTR} \
+	    	    --internalurl http://${CONTROLLER}:5000/${KAPISTR} \
+		    --adminurl http://${CONTROLLER}:${KADMINPORT}/${KAPISTR} \
+		    --region $REGION identity
+	    else
+	        __openstack endpoint create --region $REGION \
+		    identity public http://${CONTROLLER}:5000/${KAPISTR}
+		__openstack endpoint create --region $REGION \
+		    identity internal http://${CONTROLLER}:5000/${KAPISTR}
+		__openstack endpoint create --region $REGION \
+		    identity admin http://${CONTROLLER}:${KADMINPORT}/${KAPISTR}
+	    fi
+	fi
+
+	if [ $OSVERSION -eq $OSJUNO ]; then
+            # Create the admin tenant
+	    keystone tenant-create --name admin --description "Admin Tenant"
+	    keystone user-create --name admin --pass "${APSWD}" \
+	        --email "${SWAPPER_EMAIL}"
+            # Create the admin role
+	    keystone role-create --name admin
+            # Add the admin tenant and user to the admin role:
+	    keystone user-role-add --tenant admin --user admin --role admin
+            # Create the _member_ role:
+	    keystone role-create --name _member_
+            # Add the admin tenant and user to the _member_ role:
+	    keystone user-role-add --tenant admin --user admin --role _member_
+
+            # Create the adminapi user
+	    keystone user-create --name ${ADMIN_API} --pass ${ADMIN_API_PASS} \
+	        --email "${SWAPPER_EMAIL}"
+	    keystone user-role-add --tenant admin --user ${ADMIN_API} --role admin
+	    keystone user-role-add --tenant admin --user ${ADMIN_API} --role _member_
+	else
+	    if [ $OSVERSION -ge $OSMITAKA ]; then
+		openstack domain create --description "Default Domain" default
+	    fi
+
+	    __openstack project create $DOMARG --description "Admin Project" admin
+	    __openstack user create $DOMARG --password "${APSWD}" \
+	        --email "${SWAPPER_EMAIL}" admin
+	    __openstack role create admin
+	    __openstack role add --project admin --user admin admin
+
+	    __openstack role create user
+	    __openstack role add --project admin --user admin user
+
+	    __openstack project create $DOMARG --description "Service Project" service
+
+            # Create the adminapi user
+	    __openstack user create $DOMARG --password ${ADMIN_API_PASS} \
+	        --email "${SWAPPER_EMAIL}" ${ADMIN_API}
+	    __openstack role add --project admin --user ${ADMIN_API} admin
+	    __openstack role add --project admin --user ${ADMIN_API} user
+	fi
+    else
+	# Use keystone bootstrap for >= Train.
+	/usr/bin/keystone-manage bootstrap \
+	    --bootstrap-password "${APSWD}" \
+	    --bootstrap-username admin \
+	    --bootstrap-project-name admin \
+	    --bootstrap-role-name admin \
+	    --bootstrap-service-name identity \
+	    --bootstrap-admin-url http://${CONTROLLER}:${KADMINPORT}/${KAPISTR} \
+	    --bootstrap-internal-url http://${CONTROLLER}:5000/${KAPISTR} \
+	    --bootstrap-public-url http://${CONTROLLER}:5000/${KAPISTR} \
+	    --bootstrap-region-id $REGION
+
+	# We need our real credentials post-bootstrap.
+	export_credentials
+	# ... except we need the real `admin` user and password, until
+	# the adminapi user is created next.  This is changed below by
+	# another call to export_credentials after the keystone config
+	# block we're in.
+	export OS_USERNAME=admin
+	export OS_PASSWORD=${APSWD}
 
 	__openstack role create user
 	__openstack role add --project admin --user admin user
@@ -702,7 +869,6 @@ EOF
 	__openstack role add --project admin --user ${ADMIN_API} user
     fi
 
-
     if [ "x${ADMIN_PASS}" = "x" ]; then
         #
         # Update the admin user with the passwd hash from our config
@@ -713,7 +879,7 @@ EOF
 
     if [ $OSVERSION -lt $OSKILO ]; then
 	unset OS_SERVICE_TOKEN OS_SERVICE_ENDPOINT
-    else
+    elif [ $OSVERSION -lt $OSTRAIN ]; then
 	unset OS_TOKEN OS_URL
 	unset OS_IDENTITY_API_VERSION
     fi
@@ -728,115 +894,10 @@ EOF
     logtend "keystone"
 fi
 
-#
-# Create the admin-openrc.{sh,py} files.
-#
-echo "export OS_TENANT_NAME=admin" > $OURDIR/admin-openrc-oldcli.sh
-echo "export OS_USERNAME=${ADMIN_API}" >> $OURDIR/admin-openrc-oldcli.sh
-echo "export OS_PASSWORD=${ADMIN_API_PASS}" >> $OURDIR/admin-openrc-oldcli.sh
-echo "export OS_AUTH_URL=http://$CONTROLLER:${KADMINPORT}/v2.0" >> $OURDIR/admin-openrc-oldcli.sh
-
-echo "OS_TENANT_NAME=\"admin\"" > $OURDIR/admin-openrc-oldcli.py
-echo "OS_USERNAME=\"${ADMIN_API}\"" >> $OURDIR/admin-openrc-oldcli.py
-echo "OS_PASSWORD=\"${ADMIN_API_PASS}\"" >> $OURDIR/admin-openrc-oldcli.py
-echo "OS_AUTH_URL=\"http://$CONTROLLER:${KADMINPORT}/v2.0\"" >> $OURDIR/admin-openrc-oldcli.py
-if [ "x$KEYSTONEAPIVERSION" = "x3" ]; then
-    echo "OS_IDENTITY_API_VERSION=3" >> $OURDIR/admin-openrc-oldcli.py
-else
-    echo "OS_IDENTITY_API_VERSION=2.0" >> $OURDIR/admin-openrc-oldcli.py
-fi
-
-#
-# These trigger a bug with the openstack client -- it doesn't choose v2.0
-# if they're set.
-#
-if [ "x$KEYSTONEAPIVERSION" = "x3" ]; then
-    if [ $OSVERSION -lt $OSMITAKA ]; then
-	echo "export OS_PROJECT_DOMAIN_ID=default" > $OURDIR/admin-openrc-newcli.sh
-	echo "export OS_USER_DOMAIN_ID=default" >> $OURDIR/admin-openrc-newcli.sh
-    else
-	echo "export OS_PROJECT_DOMAIN_NAME=default" > $OURDIR/admin-openrc-newcli.sh
-	echo "export OS_USER_DOMAIN_NAME=default" >> $OURDIR/admin-openrc-newcli.sh
-    fi
-fi
-echo "export OS_PROJECT_NAME=admin" >> $OURDIR/admin-openrc-newcli.sh
-echo "export OS_TENANT_NAME=admin" >> $OURDIR/admin-openrc-newcli.sh
-echo "export OS_USERNAME=${ADMIN_API}" >> $OURDIR/admin-openrc-newcli.sh
-echo "export OS_PASSWORD=${ADMIN_API_PASS}" >> $OURDIR/admin-openrc-newcli.sh
-echo "export OS_AUTH_URL=http://$CONTROLLER:${KADMINPORT}/${KAPISTR}" >> $OURDIR/admin-openrc-newcli.sh
-if [ "x$KEYSTONEAPIVERSION" = "x3" ]; then
-    echo "export OS_IDENTITY_API_VERSION=3" >> $OURDIR/admin-openrc-newcli.sh
-else
-    echo "export OS_IDENTITY_API_VERSION=2.0" >> $OURDIR/admin-openrc-newcli.sh
-fi
-if [ $OSVERSION -ge $OSNEWTON ]; then
-    echo "export OS_IMAGE_API_VERSION=2" >> $OURDIR/admin-openrc-newcli.sh
-fi
-if [ $OSVERSION -ge $OSQUEENS ]; then
-    echo "export OS_AUTH_TYPE=password" >> $OURDIR/admin-openrc-newcli.sh
-fi
-
-if [ "x$KEYSTONEAPIVERSION" = "x3" ]; then
-    if [ $OSVERSION -lt $OSMITAKA ]; then
-	echo "OS_PROJECT_DOMAIN_ID=\"default\"" > $OURDIR/admin-openrc-newcli.py
-	echo "OS_USER_DOMAIN_ID=\"default\"" >> $OURDIR/admin-openrc-newcli.py
-    else
-	echo "OS_PROJECT_DOMAIN_NAME=\"default\"" > $OURDIR/admin-openrc-newcli.py
-	echo "OS_USER_DOMAIN_NAME=\"default\"" >> $OURDIR/admin-openrc-newcli.py
-    fi
-fi
-echo "OS_PROJECT_NAME=\"admin\"" >> $OURDIR/admin-openrc-newcli.py
-echo "OS_TENANT_NAME=\"admin\"" >> $OURDIR/admin-openrc-newcli.py
-echo "OS_USERNAME=\"${ADMIN_API}\"" >> $OURDIR/admin-openrc-newcli.py
-echo "OS_PASSWORD=\"${ADMIN_API_PASS}\"" >> $OURDIR/admin-openrc-newcli.py
-echo "OS_AUTH_URL=\"http://$CONTROLLER:${KADMINPORT}/${KAPISTR}\"" >> $OURDIR/admin-openrc-newcli.py
-if [ "x$KEYSTONEAPIVERSION" = "x3" ]; then
-    echo "OS_IDENTITY_API_VERSION=3" >> $OURDIR/admin-openrc-newcli.py
-else
-    echo "OS_IDENTITY_API_VERSION=2.0" >> $OURDIR/admin-openrc-newcli.py
-fi
-if [ $OSVERSION -ge $OSNEWTON ]; then
-    echo "OS_IMAGE_API_VERSION=2" >> $OURDIR/admin-openrc-newcli.py
-fi
-if [ $OSVERSION -ge $OSQUEENS ]; then
-    echo "OS_AUTH_TYPE='password'" >> $OURDIR/admin-openrc-newcli.py
-fi
-
-#
-# From here on out, we need to be the adminapi user.
-#
-if [ $OSVERSION -eq $OSJUNO ]; then
-    export OS_TENANT_NAME=admin
-    export OS_USERNAME=${ADMIN_API}
-    export OS_PASSWORD=${ADMIN_API_PASS}
-    export OS_AUTH_URL=http://$CONTROLLER:${KADMINPORT}/${KAPISTR}
-
-    ln -sf $OURDIR/admin-openrc-oldcli.sh $OURDIR/admin-openrc.sh
-    ln -sf $OURDIR/admin-openrc-oldcli.py $OURDIR/admin-openrc.py
-else
-    if [ "x$KEYSTONEAPIVERSION" = "x3" ]; then
-	if [ $OSVERSION -lt $OSMITAKA ]; then
-	    export OS_PROJECT_DOMAIN_ID=default
-	    export OS_USER_DOMAIN_ID=default
-	else
-	    export OS_PROJECT_DOMAIN_NAME=default
-	    export OS_USER_DOMAIN_NAME=default
-	fi
-    fi
-    export OS_PROJECT_NAME=admin
-    export OS_TENANT_NAME=admin
-    export OS_USERNAME=${ADMIN_API}
-    export OS_PASSWORD=${ADMIN_API_PASS}
-    export OS_AUTH_URL=http://${CONTROLLER}:${KADMINPORT}/${KAPISTR}
-    if [ "x$KEYSTONEAPIVERSION" = "x3" ]; then
-	export OS_IDENTITY_API_VERSION=3
-    else
-	export OS_IDENTITY_API_VERSION=2.0
-    fi
-
-    ln -sf $OURDIR/admin-openrc-newcli.sh $OURDIR/admin-openrc.sh
-    ln -sf $OURDIR/admin-openrc-newcli.py $OURDIR/admin-openrc.py
-fi
+# Write our credential files if they don't exist.
+make_credential_files
+# Export our admin creds into the environment.  Might already be done.
+export_credentials
 
 #
 # Install the Image service
@@ -1132,12 +1193,16 @@ if [ -z "${NOVA_DBPASS}" ]; then
 	fi
     fi
 
-    maybe_install_packages nova-api nova-conductor nova-consoleauth \
-	nova-novncproxy nova-scheduler ${PYPKGPREFIX}-novaclient
+    maybe_install_packages nova-api nova-conductor \
+	nova-novncproxy nova-scheduler
+    maybe_install_packages nova-consoleauth ${PYPKGPREFIX}-novaclient
     if [ $OSVERSION -lt $OSQUEENS ]; then
 	maybe_install_packages nova-cert
     fi
-    if [ $OSVERSION -ge $OSOCATA ]; then
+    if [ $OSVERSION -ge $OSTRAIN ]; then
+	maybe_install_packages placement-api
+	a2ensite placement-api
+    elif [ $OSVERSION -ge $OSOCATA ]; then
 	maybe_install_packages nova-placement-api
     fi
     
@@ -1274,11 +1339,16 @@ EOF
 	    nova.scheduler.filters.all_filters
 	crudini --set /etc/nova/nova.conf DEFAULT scheduler_default_filters \
 	    'RetryFilter, AvailabilityZoneFilter, RamFilter, ComputeFilter, ComputeCapabilitiesFilter, ImagePropertiesFilter, ServerGroupAntiAffinityFilter, ServerGroupAffinityFilter'
-    elif [ $OSVERSION -ge $OSOCATA ]; then
+    elif [ $OSVERSION -ge $OSOCATA -a $OSVERSION -lt $OSTRAIN ]; then
 	crudini --set /etc/nova/nova.conf filter_scheduler available_filters \
 	    nova.scheduler.filters.all_filters
 	crudini --set /etc/nova/nova.conf filter_scheduler enabled_filters \
 	    'RetryFilter, AvailabilityZoneFilter, RamFilter, ComputeFilter, ComputeCapabilitiesFilter, ImagePropertiesFilter, ServerGroupAntiAffinityFilter, ServerGroupAffinityFilter'
+    elif [ $OSVERSION -ge $OSTRAIN ]; then
+	crudini --set /etc/nova/nova.conf filter_scheduler available_filters \
+	    nova.scheduler.filters.all_filters
+	crudini --set /etc/nova/nova.conf filter_scheduler enabled_filters \
+	    'RetryFilter, AvailabilityZoneFilter, ComputeFilter, ComputeCapabilitiesFilter, ImagePropertiesFilter, ServerGroupAntiAffinityFilter, ServerGroupAffinityFilter'
     fi
 
     if [ $OSVERSION -ge $OSKILO ]; then
@@ -1301,8 +1371,13 @@ EOF
     fi
 
     if [ $OSVERSION -ge $OSOCATA ]; then
-	crudini --set /etc/nova/nova.conf placement \
-	    os_region_name $REGION
+	if [ $OSVERSION -ge $OSTRAIN ]; then
+	    crudini --set /etc/nova/nova.conf placement \
+  		region_name $REGION
+	else
+	    crudini --set /etc/nova/nova.conf placement \
+	        os_region_name $REGION
+	fi
 	crudini --set /etc/nova/nova.conf placement \
 	    auth_url http://${CONTROLLER}:${KADMINPORT}/v3
 	crudini --set /etc/nova/nova.conf placement \
@@ -1317,6 +1392,34 @@ EOF
 	    username placement
 	crudini --set /etc/nova/nova.conf placement \
 	    password "${PLACEMENT_PASS}"
+    fi
+
+    if [ $OSVERSION -ge $OSTRAIN ]; then
+	crudini --set /etc/placement/placement.conf placement_database connection \
+	    "${DBDSTRING}://placement:$PLACEMENT_DBPASS@$CONTROLLER/placement"
+	crudini --set /etc/placement/placement.conf api auth_strategy keystone
+	crudini --set /etc/placement/placement.conf keystone_authtoken \
+	    auth_url http://${CONTROLLER}:${KADMINPORT}/v3
+	crudini --set /etc/placement/placement.conf keystone_authtoken \
+	    ${AUTH_TYPE_PARAM} password
+	crudini --set /etc/placement/placement.conf keystone_authtoken \
+	    ${PROJECT_DOMAIN_PARAM} default
+	crudini --set /etc/placement/placement.conf keystone_authtoken \
+	    ${USER_DOMAIN_PARAM} default
+	crudini --set /etc/placement/placement.conf keystone_authtoken \
+	    project_name service
+	crudini --set /etc/placement/placement.conf keystone_authtoken \
+	    username placement
+	crudini --set /etc/placement/placement.conf keystone_authtoken \
+	    password "${PLACEMENT_PASS}"
+	if [ $KEYSTONEUSEMEMCACHE -eq 1 ]; then
+	    crudini --set /etc/placement/placement.conf keystone_authtoken \
+	        memcached_servers ${CONTROLLER}:11211
+	fi
+    fi
+
+    if [ $OSVERSION -ge $OSTRAIN ]; then
+	su -s /bin/sh -c "placement-manage db sync" placement
     fi
 
     if [ $OSVERSION -ge $OSMITAKA ]; then
@@ -1351,8 +1454,11 @@ EOF
     service_enable nova-novncproxy
     service_restart nova-serialproxy
     service_enable nova-serialproxy
-    if [ $OSVERSION -ge $OSOCATA ]; then
-	a2ensite nova-placement-api.conf
+    if [ $OSVERSION -ge $OSTRAIN ]; then
+	a2ensite placement-api
+	service apache2 reload
+    elif [ $OSVERSION -ge $OSOCATA ]; then
+	a2ensite nova-placement-api
 	service apache2 reload
     else
 	service_restart nova-placement-api
@@ -1500,7 +1606,7 @@ if [ -z "${NEUTRON_DBPASS}" ]; then
     fi
 
     maybe_install_packages neutron-server neutron-plugin-ml2 ${PYPKGPREFIX}-neutronclient
-    if [ $USE_NEUTRON_LBAAS -eq 1 -a $OSVERSION -ge $OSNEWTON ]; then
+    if [ $USE_NEUTRON_LBAAS -eq 1 ]; then
 	maybe_install_packages ${PYPKGPREFIX}-neutron-lbaas
     fi
 
@@ -1526,7 +1632,7 @@ if [ -z "${NEUTRON_DBPASS}" ]; then
     crudini --set /etc/neutron/neutron.conf DEFAULT core_plugin ml2
     if [ $OSVERSION -lt $OSNEWTON ]; then
 	crudini --set /etc/neutron/neutron.conf DEFAULT service_plugins 'router,metering'
-    elif [ $USE_NEUTRON_LBAAS -eq 1 -a $OSVERSION -ge $OSNEWTON ]; then
+    elif [ $USE_NEUTRON_LBAAS -eq 1 ]; then
 	crudini --set /etc/neutron/neutron.conf DEFAULT service_plugins \
 	    'router,metering,neutron_lbaas.services.loadbalancer.plugin.LoadBalancerPluginv2'
     else
@@ -1695,7 +1801,7 @@ EOF
 	    firewall_driver $fwdriver
     fi
 
-    if [ $USE_NEUTRON_LBAAS -eq 1 -a $OSVERSION -ge $OSNEWTON ]; then
+    if [ $USE_NEUTRON_LBAAS -eq 1 ]; then
 	crudini --set /etc/neutron/neutron_lbaas.conf service_providers \
 	    service_provider "LOADBALANCERV2:Haproxy:neutron_lbaas.drivers.haproxy.plugin_driver.HaproxyOnHostPluginDriver:default"
     fi
@@ -1770,7 +1876,7 @@ EOF
 
     # Install the neutron lbaas dashboard panel, and update the neutron
     # db for lbaas.
-    if [ $USE_NEUTRON_LBAAS -eq 1 -a $OSVERSION -ge $OSNEWTON ]; then
+    if [ $USE_NEUTRON_LBAAS -eq 1 ]; then
 	maybe_install_packages ${PYPKGPREFIX}-neutron-lbaas-dashboard
 	if [ $? -eq 1 ]; then
 	    git clone https://git.openstack.org/openstack/neutron-lbaas-dashboard
@@ -1914,7 +2020,7 @@ if [ -z "${NEUTRON_NETWORKS_DONE}" ]; then
 
     # Support newer pluggable ipamallocationpools, too.
     if [ $OSVERSION -ge $OSNEWTON ]; then
-	IPAMSID=`echo "select id from ipamsubnets where neutron_subnet_id='$SID'" | mysql -N --password=$NEUTRON_DBPASS neutron`
+	IPAMSID=`echo "select id from ipamsubnets where neutron_subnet_id='$SID'" | mysql -N --password=${DB_ROOT_PASS} neutron`
 	if [ -z "$IPAMSID" ]; then
 	    echo "WARNING: could not find ipamsubnetid from ipamsubnets post-Newton!"
 	else
@@ -2398,7 +2504,7 @@ if [ $OSVERSION -ge $OSMITAKA -a -z "${MANILA_DBPASS}" ]; then
     # Fix a bug in manila-api.  This isn't exactly the right fix, I'm
     # sure, but because we default neutron port_security off, it works
     # fine for us.
-    if [ $OSVERSION -ge $OSQUEENS ]; then
+    if [ $OSVERSION -ge $OSQUEENS -a $OSVERSION -lt $OSTRAIN ]; then
 	patch -p0 -d / < $DIRNAME/etc/manila-${OSCODENAME}-port-security-bug.patch
     fi
 
@@ -3526,14 +3632,13 @@ if [ $OSVERSION -ge $OSPIKE -a -z "${TELEMETRY_GRAFANA_DONE}" ]; then
     crudini --set /etc/grafana/grafana.ini security admin_user admin
     crudini --set /etc/grafana/grafana.ini security admin_password "${GPASSWD}"
 
-    chown -R grafana:grafana /var/lib/grafana/grafana.db
-    service_enable grafana-server
-    service_restart grafana-server
+    chown -R grafana:grafana /var/lib/grafana /var/log/grafana
     # Try an initial password reset to force the DB schema to be populated;
     # apparently just starting grafana-server doesn't do that.
     grafana-cli \
 	--config /etc/grafana/grafana.ini --homepath /usr/share/grafana \
 	admin reset-admin-password "$GPASSWD"
+    chown -R grafana:grafana /var/lib/grafana /var/log/grafana
     service_restart grafana-server
 
     #
@@ -3561,6 +3666,7 @@ if [ $OSVERSION -ge $OSPIKE -a -z "${TELEMETRY_GRAFANA_DONE}" ]; then
     # Install the gnocchi plugin
     grafana-cli plugins install gnocchixyz-gnocchi-datasource
     chown -R grafana:grafana /var/lib/grafana/grafana.db
+    chown -R grafana:grafana /var/log/grafana
     service_restart grafana-server
 
     # Add the token-based datasource

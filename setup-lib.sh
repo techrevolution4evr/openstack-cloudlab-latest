@@ -120,7 +120,7 @@ LINUXBRIDGE_STATIC=0
 # control net DNS server).  The local domain will also be searched prior
 # to the cluster's domain.
 USE_DESIGNATE_AS_RESOLVER=1
-# If set to 1, and if OSRELEASE >= OSNEWTON, then setup Neutron LBaaS.
+# If set to 1, and if OSRELEASE >= OSNEWTON && < OSTRAIN, then setup Neutron LBaaS.
 USE_NEUTRON_LBAAS=1
 # We are not currently using the ceilometer stats, and they do not work
 # as of Pike due to the switch to Gnocchi as the measurement DB.
@@ -293,6 +293,14 @@ fi
 . $OURDIR/parameters
 
 #
+# Fix up parameter values that we might not be able to support.
+#
+if [ $USE_NEUTRON_LBAAS -a \( $OSVERSION -lt $OSNEWTON -o $OSVERSION -gt $OSSTEIN \) ]; then
+    echo "WARNING: cannot enable Neutron LBaaS on $OSRELEASE"
+    USE_NEUTRON_LBAAS=0
+fi
+
+#
 # Ok, to be absolutely safe, if the ADMIN_PASS_HASH we got from params was "",
 # and if admin pass wasn't sent as an encrypted string to us, we have we have
 # to generate a random admin pass and hash it.
@@ -358,6 +366,7 @@ OSPIKE=16
 OSQUEENS=17
 OSROCKY=18
 OSSTEIN=19
+OSTRAIN=20
 
 . /etc/lsb-release
 #
@@ -375,6 +384,7 @@ if [ ! "x$OSRELEASE" = "x" ]; then
     if [ $OSCODENAME = "queens" ]; then OSVERSION=$OSQUEENS ; fi
     if [ $OSCODENAME = "rocky" ]; then OSVERSION=$OSROCKY ; fi
     if [ $OSCODENAME = "stein" ]; then OSVERSION=$OSSTEIN ; fi
+    if [ $OSCODENAME = "train" ]; then OSVERSION=$OSTRAIN ; fi
 
     #
     # We only use cloudarchive for LTS images!
