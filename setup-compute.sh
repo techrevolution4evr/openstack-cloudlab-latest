@@ -325,8 +325,10 @@ if [ ${ENABLE_HOST_PASSTHROUGH} = 1 ]; then
 fi
 
 if [ "$ARCH" = "aarch64" ] ; then
-    crudini --set /etc/nova/nova-compute.conf libvirt cpu_mode custom
-    crudini --set /etc/nova/nova-compute.conf libvirt cpu_model host
+    if [ $OSVERSION -lt $OSTRAIN ]; then
+	crudini --set /etc/nova/nova-compute.conf libvirt cpu_mode custom
+	crudini --set /etc/nova/nova-compute.conf libvirt cpu_model host
+    fi
 
     if [ $OSVERSION -ge $OSLIBERTY -a $OSVERSION -le $OSMITAKA ]; then
 	crudini --set /etc/nova/nova-compute.conf libvirt video_type vga
@@ -345,6 +347,8 @@ if [ "$ARCH" = "aarch64" ] ; then
 	patch -d / -p0 < $DIRNAME/etc/nova-rocky-aarch64-libvirt-bios-default.patch
     elif [ $OSVERSION -eq $OSSTEIN ]; then
 	patch -d / -p0 < $DIRNAME/etc/nova-stein-aarch64-libvirt-bios-default.patch
+    elif [ $OSVERSION -eq $OSTRAIN ]; then
+	patch -d / -p0 < $DIRNAME/etc/nova-train-aarch64-libvirt-bios-default.patch
     fi
 elif [ "$ARCH" = "ppc64le" ] ; then
     ppc64_cpu --smt=off
