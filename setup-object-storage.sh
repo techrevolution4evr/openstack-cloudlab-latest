@@ -65,8 +65,12 @@ mkdir -p ${STORAGEDIR}/mnt/swift
 for ldev in $LDEVS ; do
     base=`basename $ldev`
     mkfs.xfs $ldev
+    mountopts="noatime,nodiratime,logbufs=8"
+    if [ $OSVERSION -ge $OSUSSURI ]; then
+	mountopts="$mountopts,nobarrier"
+    fi
     cat <<EOF >> /etc/fstab
-$ldev ${STORAGEDIR}/mnt/swift/$base xfs noatime,nodiratime,nobarrier,logbufs=8 0 2
+$ldev ${STORAGEDIR}/mnt/swift/$base xfs $mountopts 0 2
 EOF
     mkdir -p ${STORAGEDIR}/mnt/swift/$base
     mount ${STORAGEDIR}/mnt/swift/$base
