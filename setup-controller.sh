@@ -2020,7 +2020,7 @@ if [ -z "${NEUTRON_NETWORKS_DONE}" ]; then
 
     # Support newer pluggable ipamallocationpools, too.
     if [ $OSVERSION -ge $OSNEWTON ]; then
-	IPAMSID=`echo "select id from ipamsubnets where neutron_subnet_id='$SID'" | mysql -N --password=$NEUTRON_DBPASS neutron`
+	IPAMSID=`echo "select id from ipamsubnets where neutron_subnet_id='$SID'" | mysql -N --password=${DB_ROOT_PASS} neutron`
 	if [ -z "$IPAMSID" ]; then
 	    echo "WARNING: could not find ipamsubnetid from ipamsubnets post-Newton!"
 	else
