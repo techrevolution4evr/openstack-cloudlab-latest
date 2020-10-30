@@ -235,8 +235,6 @@ do
 	> /etc/openvpn/ccd/$node
 done
 
-unset EASY_RSA
-
 if [ $OLDEASYRSA -eq 1 ]; then
     unset KEY_COUNTRY
     unset KEY_PROVINCE
@@ -290,6 +288,8 @@ done
 
 $PSSH -o $OURDIR/pssh.setup-vpn.stdout -e $OURDIR/pssh.setup-vpn.stderr \
     $PHOSTS $DIRNAME/setup-vpn-client.sh
+
+unset EASY_RSA
 
 logtend "vpn"
 
