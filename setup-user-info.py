@@ -2,11 +2,6 @@
 
 import sys
 import subprocess
-from keystoneclient.auth.identity import v2
-try:
-    from keystoneclient.auth.identity import v3
-except:
-    pass
 from keystoneclient import session
 from novaclient.client import Client
 import sys
@@ -127,8 +122,10 @@ def build_keystone_args():
 
 kargs = build_keystone_args()
 if 'project_domain_name' in kargs or 'project_domain_id' in kargs:
+    from keystoneclient.auth.identity import v3
     auth = v3.Password(**kargs)
 else:
+    from keystoneclient.auth.identity import v2
     auth = v2.Password(**kargs) #auth_url=url,username=ADMIN_API,password=ADMIN_API_PASS,tenant_name='admin')
     pass
 sess = session.Session(auth=auth)
