@@ -1219,6 +1219,15 @@ fi
 if [ ! -e $OURDIR/info.mgmt ]; then
     MGMTIP=`grep -E "$NODEID$" $OURDIR/mgmt-hosts | head -1 | sed -n -e 's/^\\([0-9]*\\.[0-9]*\\.[0-9]*\\.[0-9]*\\).*$/\\1/p'`
     MGMTNETMASK=`cat $OURDIR/mgmt-netmask`
+    IFS=.
+    read -r i1 i2 i3 i4 <<EOF
+$MGMTIP
+EOF
+    read -r m1 m2 m3 m4 <<EOF
+$MGMTNETMASK
+EOF
+    unset IFS
+    MGMTNETWORK=`printf "%d.%d.%d.%d\n" "$((i1 & m1))" "$((i2 & m2))" "$((i3 & m3))" "$((i4 & m4))"`
     MGMTPREFIX=`netmask2prefix $MGMTNETMASK`
     if [ -z "$MGMTLAN" ] ; then
 	MGMTVLAN=0
@@ -1242,6 +1251,7 @@ if [ ! -e $OURDIR/info.mgmt ]; then
     fi
     echo "MGMTIP='$MGMTIP'" >> $OURDIR/info.mgmt
     echo "MGMTNETMASK='$MGMTNETMASK'" >> $OURDIR/info.mgmt
+    echo "MGMTNETWORK='$MGMTNETWORK'" >> $OURDIR/info.mgmt
     echo "MGMTPREFIX='$MGMTPREFIX'" >> $OURDIR/info.mgmt
     echo "MGMTVLAN=$MGMTVLAN" >> $OURDIR/info.mgmt
     echo "MGMTMAC='$MGMTMAC'" >> $OURDIR/info.mgmt
