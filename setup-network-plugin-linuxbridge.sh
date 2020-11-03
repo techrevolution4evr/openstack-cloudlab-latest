@@ -263,6 +263,10 @@ echo "$MYIP    $NFQDN $PFQDN" >> /etc/hosts
 modprobe bridge
 echo bridge >> /etc/modules
 
+if [ $OSVERSION -eq $OSUSSURI ]; then
+    patch -d / -p0 $DIRNAME/etc/oslo_service-ussuri-log-circular-import.patch
+fi
+
 service_restart nova-compute
 if [ $OSVERSION -lt $OSMITAKA ]; then
     service_restart neutron-plugin-linuxbridge-agent
