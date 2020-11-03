@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from __future__ import print_function
 import sys
 import subprocess
 from keystoneclient import session
@@ -16,7 +17,6 @@ import os.path
 import traceback
 import logging
 import six
-from __future__ import print_function
 
 LOG = logging.getLogger(__name__)
 # Define a default handler at INFO logging level
