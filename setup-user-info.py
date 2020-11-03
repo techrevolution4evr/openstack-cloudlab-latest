@@ -16,8 +16,7 @@ import os.path
 import traceback
 import logging
 import six
-
-myprint = six.print_
+from __future__ import print_function
 
 LOG = logging.getLogger(__name__)
 # Define a default handler at INFO logging level
@@ -189,14 +188,14 @@ else:
 #  where user_id=\'${AUID}\'
 cmd = 'export AAUID="`%s | awk \'/ adminapi / {print $2}\'`" ; export AUID="`%s | awk \'/ admin / {print $2}\'`" ; mysqldump -u nova --password=%s nova -t key_pairs --skip-comments --quote-names --no-create-info --no-create-db --complete-insert --compact | sed -e \'s/,[0-9]*,/,NULL,/gi\' | sed -e "s/,\'${AAUID}\',/,\'${AUID}\',/gi" | mysql -u nova --password=%s nova ; echo "update key_pairs set deleted=0" | mysql -u nova --password=%s nova' % (os_cred_stuff,os_cred_stuff,NOVA_DBPASS,NOVA_DBPASS,NOVA_DBPASS,)
 #cmd = 'export OS_PASSWORD="%s" ; export OS_AUTH_URL="%s" ; export OS_USERNAME="%s" ; export OS_TENANT_NAME="%s" ; export AAUID="`keystone user-list | awk \'/ adminapi / {print $2}\'`" ; export AUID="`keystone user-list | awk \'/ admin / {print $2}\'`" ; mysqldump -u nova --password=%s nova -t key_pairs --skip-comments --quote-names --no-create-info --no-create-db --complete-insert --compact | sed -e \'s/,[0-9]*,/,NULL,/gi\' | sed -e "s/,\'${AAUID}\',/,\'${AUID}\',/gi" | mysql -u nova --password=%s nova ; echo "update key_pairs set deleted=0 where user_id=\'${AUID}\'" | mysql -u nova --password=%s nova' % (OS_PASSWORD,OS_AUTH_URL,OS_USERNAME,OS_PASSWORD,NOVA_DBPASS,NOVA_DBPASS,NOVA_DBPASS,)
-myprint("Running adminapi -> admin key import: %s..." % (cmd,))
+print("Running adminapi -> admin key import: %s..." % (cmd,))
 os.system(cmd)
 
 #
 # Ugh, the tables are now split between nova and nova_api ... so just do this too.
 #
 cmd = 'export AAUID="`%s | awk \'/ adminapi / {print $2}\'`" ; export AUID="`%s | awk \'/ admin / {print $2}\'`" ; mysqldump -u nova --password=%s nova_api -t key_pairs --skip-comments --quote-names --no-create-info --no-create-db --complete-insert --compact | sed -e \'s/,[0-9]*,/,NULL,/gi\' | sed -e "s/,\'${AAUID}\',/,\'${AUID}\',/gi" | mysql -u nova --password=%s nova_api ; echo "update key_pairs set deleted=0" | mysql -u nova_api --password=%s nova' % (os_cred_stuff,os_cred_stuff,NOVA_DBPASS,NOVA_DBPASS,NOVA_DBPASS,)
-myprint("Running adminapi -> admin key import: %s..." % (cmd,))
+print("Running adminapi -> admin key import: %s..." % (cmd,))
 os.system(cmd)
 
 sys.exit(0)
