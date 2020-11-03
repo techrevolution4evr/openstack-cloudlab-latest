@@ -4613,7 +4613,7 @@ options {
     request-ixfr no;
     listen-on port 53 { 127.0.0.1; ${MGMTIP}; };
     recursion yes;
-    allow-query { 127.0.0.1; ${MGMTIP}/${MGMTNETWORK}; };
+    allow-query { 127.0.0.1; ${MGMTNETWORK}/${MGMTPREFIX}; };
 };
 
 controls {
