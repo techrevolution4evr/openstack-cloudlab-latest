@@ -265,6 +265,8 @@ echo bridge >> /etc/modules
 
 if [ $OSVERSION -eq $OSUSSURI ]; then
     patch -d / -p0 < $DIRNAME/etc/oslo_service-ussuri-log-circular-import.patch
+    # https://ask.openstack.org/en/question/128445/linuxbridge-agent-failing-on-vm-shutdown/
+    patch -d / -p0 < $DIRNAME/etc/neutron-ussuri-linuxbridge-arp-flush-chains.patch
 fi
 
 service_restart nova-compute
