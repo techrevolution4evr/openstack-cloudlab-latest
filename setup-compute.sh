@@ -345,6 +345,10 @@ if [ "$ARCH" = "aarch64" ] ; then
 	patch -d / -p0 < $DIRNAME/etc/nova-rocky-aarch64-libvirt-bios-default.patch
     elif [ $OSVERSION -eq $OSSTEIN ]; then
 	patch -d / -p0 < $DIRNAME/etc/nova-stein-aarch64-libvirt-bios-default.patch
+    elif [ $OSVERSION -eq $OSTRAIN ]; then
+	patch -d / -p0 < $DIRNAME/etc/nova-train-aarch64-libvirt-bios-default.patch
+    elif [ $OSVERSION -eq $OSUSSURI ]; then
+	patch -d / -p0 < $DIRNAME/etc/nova-ussuri-aarch64-libvirt-bios-default.patch
     fi
 elif [ "$ARCH" = "ppc64le" ] ; then
     ppc64_cpu --smt=off
