@@ -66,7 +66,7 @@ for ldev in $LDEVS ; do
     base=`basename $ldev`
     mkfs.xfs $ldev
     mountopts="noatime,nodiratime,logbufs=8"
-    if [ $OSVERSION -ge $OSUSSURI ]; then
+    if [ $OSVERSION -lt $OSUSSURI ]; then
 	mountopts="$mountopts,nobarrier"
     fi
     cat <<EOF >> /etc/fstab
