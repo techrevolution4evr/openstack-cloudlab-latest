@@ -41,7 +41,7 @@ if [ $OSVERSION -ge $OSKILO ]; then
 fi
 
 maybe_install_packages nova-compute sysfsutils
-maybe_install_packages libguestfs-tools libguestfs0 python-guestfs
+maybe_install_packages libguestfs-tools libguestfs0 ${PYPKGPREFIX}-guestfs
 
 #
 # Once we install packages, if the user wants a bigger VM disk space
