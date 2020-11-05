@@ -3952,7 +3952,7 @@ if [ -z "${TROVE_DBPASS}" ]; then
     maybe_install_packages ${PYPKGPREFIX}-trove ${PYPKGPREFIX}-troveclient ${PYPKGPREFIX}-glanceclient \
 	trove-api trove-taskmanager trove-conductor
     if [ $OSVERSION -ge $OSMITAKA ]; then
-	sepdashpkg=`apt-cache search --names-only ^python-trove-dashboard\$ | wc -l`
+	sepdashpkg=`apt-cache search --names-only ^${PYPKGPREFIX}-trove-dashboard\$ | wc -l`
 	if [ ! "$sepdashpkg" = "0" ]; then
             # Bug in mitaka package -- postinstall fails to remove this file.
 	    madedir=0
