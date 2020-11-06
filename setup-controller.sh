@@ -4016,7 +4016,7 @@ if [ -z "${TROVE_DBPASS}" ]; then
     crudini --set /etc/trove/trove.conf DEFAULT verbose ${VERBOSE_LOGGING}
     crudini --set /etc/trove/trove.conf DEFAULT debug ${DEBUG_LOGGING}
     crudini --set /etc/trove/trove.conf DEFAULT log_dir /var/log/trove
-    crudini --set /etc/ceilometer/ceilometer.conf DEFAULT bind_host ${MGMTIP}
+    crudini --set /etc/trove/trove.conf DEFAULT bind_host ${MGMTIP}
     if [ $OSVERSION -lt $OSLIBERTY ]; then
 	crudini --set /etc/trove/trove.conf DEFAULT rpc_backend rabbit
 	crudini --set /etc/trove/trove.conf DEFAULT rabbit_host ${CONTROLLER}
@@ -4205,6 +4205,27 @@ EOF
     if [ $OSVERSION -ge $OSMITAKA -o $KEYSTONEUSEMEMCACHE -eq 1 ]; then
 	crudini --set /etc/trove/trove.conf keystone_authtoken \
 	    memcached_servers ${CONTROLLER}:11211
+    fi
+
+    if [ $OSVERSION -ge $OSTRAIN ]; then
+	crudini --set /etc/trove/trove.conf service_credentials \
+	    ${AUTH_URI_KEY} http://${CONTROLLER}:5000
+	crudini --set /etc/trove/trove.conf service_credentials \
+	    auth_url http://${CONTROLLER}:${KADMINPORT}
+	crudini --set /etc/trove/trove.conf service_credentials \
+	    ${AUTH_TYPE_PARAM} password
+	crudini --set /etc/trove/trove.conf service_credentials \
+	    ${PROJECT_DOMAIN_PARAM} default
+	crudini --set /etc/trove/trove.conf service_credentials \
+	    ${USER_DOMAIN_PARAM} default
+	crudini --set /etc/trove/trove.conf service_credentials \
+	    project_name service
+	crudini --set /etc/trove/trove.conf service_credentials \
+	    username trove
+	crudini --set /etc/trove/trove.conf service_credentials \
+	    password ${TROVE_PASS}
+	crudini --set /etc/trove/trove.conf service_credentials \
+	    region_name $REGION
     fi
 
     sed -i -e "s/^\\(.*auth_host.*=.*\\)$/#\1/" /etc/trove/api-paste.ini
