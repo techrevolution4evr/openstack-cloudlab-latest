@@ -252,6 +252,10 @@ fi
 modprobe bridge
 echo bridge >> /etc/modules
 
+if [ $OSVERSION -eq $OSUSSURI ]; then
+    patch -d / -p0 < $DIRNAME/etc/oslo_service-ussuri-log-circular-import.patch
+fi
+
 service_restart openvswitch-switch
 service_enable openvswitch-switch
 service_restart nova-compute

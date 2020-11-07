@@ -367,6 +367,7 @@ OSQUEENS=17
 OSROCKY=18
 OSSTEIN=19
 OSTRAIN=20
+OSUSSURI=21
 
 . /etc/lsb-release
 #
@@ -385,6 +386,7 @@ if [ ! "x$OSRELEASE" = "x" ]; then
     if [ $OSCODENAME = "rocky" ]; then OSVERSION=$OSROCKY ; fi
     if [ $OSCODENAME = "stein" ]; then OSVERSION=$OSSTEIN ; fi
     if [ $OSCODENAME = "train" ]; then OSVERSION=$OSTRAIN ; fi
+    if [ $OSCODENAME = "ussuri" ]; then OSVERSION=$OSUSSURI ; fi
 
     #
     # We only use cloudarchive for LTS images!
@@ -531,7 +533,10 @@ fi
 #
 # Set the database package name and driver string.
 #
-if [ $OSVERSION -ge $OSNEWTON ]; then
+if [ $OSVERSION -ge $OSUSSURI ]; then
+    DBDPACKAGE="${PYPKGPREFIX}-pymysql"
+    DBDSTRING="mysql+pymysql"
+elif [ $OSVERSION -ge $OSNEWTON ]; then
     DBDPACKAGE="python-pymysql"
     DBDSTRING="mysql+pymysql"
 else
@@ -1214,6 +1219,15 @@ fi
 if [ ! -e $OURDIR/info.mgmt ]; then
     MGMTIP=`grep -E "$NODEID$" $OURDIR/mgmt-hosts | head -1 | sed -n -e 's/^\\([0-9]*\\.[0-9]*\\.[0-9]*\\.[0-9]*\\).*$/\\1/p'`
     MGMTNETMASK=`cat $OURDIR/mgmt-netmask`
+    IFS=.
+    read -r i1 i2 i3 i4 <<EOF
+$MGMTIP
+EOF
+    read -r m1 m2 m3 m4 <<EOF
+$MGMTNETMASK
+EOF
+    unset IFS
+    MGMTNETWORK=`printf "%d.%d.%d.%d\n" "$((i1 & m1))" "$((i2 & m2))" "$((i3 & m3))" "$((i4 & m4))"`
     MGMTPREFIX=`netmask2prefix $MGMTNETMASK`
     if [ -z "$MGMTLAN" ] ; then
 	MGMTVLAN=0
@@ -1237,6 +1251,7 @@ if [ ! -e $OURDIR/info.mgmt ]; then
     fi
     echo "MGMTIP='$MGMTIP'" >> $OURDIR/info.mgmt
     echo "MGMTNETMASK='$MGMTNETMASK'" >> $OURDIR/info.mgmt
+    echo "MGMTNETWORK='$MGMTNETWORK'" >> $OURDIR/info.mgmt
     echo "MGMTPREFIX='$MGMTPREFIX'" >> $OURDIR/info.mgmt
     echo "MGMTVLAN=$MGMTVLAN" >> $OURDIR/info.mgmt
     echo "MGMTMAC='$MGMTMAC'" >> $OURDIR/info.mgmt

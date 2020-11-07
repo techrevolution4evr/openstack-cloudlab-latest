@@ -41,7 +41,7 @@ if [ $OSVERSION -ge $OSKILO ]; then
 fi
 
 maybe_install_packages nova-compute sysfsutils
-maybe_install_packages libguestfs-tools libguestfs0 python-guestfs
+maybe_install_packages libguestfs-tools libguestfs0 ${PYPKGPREFIX}-guestfs
 
 #
 # Once we install packages, if the user wants a bigger VM disk space
@@ -349,6 +349,8 @@ if [ "$ARCH" = "aarch64" ] ; then
 	patch -d / -p0 < $DIRNAME/etc/nova-stein-aarch64-libvirt-bios-default.patch
     elif [ $OSVERSION -eq $OSTRAIN ]; then
 	patch -d / -p0 < $DIRNAME/etc/nova-train-aarch64-libvirt-bios-default.patch
+    elif [ $OSVERSION -eq $OSUSSURI ]; then
+	patch -d / -p0 < $DIRNAME/etc/nova-ussuri-aarch64-libvirt-bios-default.patch
     fi
 elif [ "$ARCH" = "ppc64le" ] ; then
     ppc64_cpu --smt=off

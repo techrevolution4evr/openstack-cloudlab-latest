@@ -34,6 +34,7 @@ if [ "$HOSTNAME" = "$CONTROLLER" ]; then
 	maybe_install_packages nginx
     fi
     rm -f /etc/nginx/sites-enabled/default
+    maybe_install_packages apache2-utils
     echo "$ADMIN_PASS" | htpasswd -n -i admin > /etc/nginx/htpasswd
     chown www-data:root /etc/nginx/htpasswd
     chmod 660 /etc/nginx/htpasswd
