@@ -5,13 +5,23 @@
 #
 set -x
 
+if [ -z "$EUID" ]; then
+    EUID=`id -u`
+fi
+
 if [ $EUID -ne 0 ] ; then
     echo "This script must be run as root" 1>&2
     exit 1
 fi
 
 # Grab our libs
-. "`dirname $0`/setup-lib.sh"
+DIRNAME=`dirname $0`
+if [ -e $DIRNAME/setup-lib.sh ]; then
+    . $DIRNAME/setup-lib.sh
+else
+    logtstart() /bin/true
+    logtend() /bin/true
+fi
 
 logtstart "grow-rootfs"
 
@@ -79,20 +89,19 @@ if [ $NODELETE -eq 0 ]; then
 	if [ ! $? -eq 0 ]; then
 	    continue
 	fi
-	# Now extract the partition number (to feed to parted).  Partition
+	# Now extract the partition (to feed to sfdisk).  Partition
 	# number is not reported by most Linux tools nor by sysfs, so we
 	# have to extract via regexp.  Right now we only worry about nvme
 	# devices (or any device that ends with a "p\d+"), and assume that
 	# anything else is "standard".
-	PARTNO=`echo "$NAME" | sed -ne "s/^${PKNAME}p\([0-9]*\)$/\1/p"`
-	if [ ! $? -eq 0 -o -z "$PARTNO" ]; then
-	    PARTNO=`echo "$NAME" | sed -ne "s/^${PKNAME}\([0-9]*\)$/\1/p"`
+	PART=`echo "$NAME" | sed -ne "s/^${PKNAME}\(p[0-9]*\)$/\1/p"`
+	if [ ! $? -eq 0 -o -z "$PART" ]; then
+	    PART=`echo "$NAME" | sed -ne "s/^${PKNAME}\([0-9]*\)$/\1/p"`
 	fi
-	if [ ! $? -eq 0 -o -z "$PARTNO" ]; then
+	if [ ! $? -eq 0 -o -z "$PART" ]; then
 	    continue
 	fi
-	PARTS="$PARTNO $PARTS"
-	echo $PARTNO >> /tmp/sfdisk.parts-to-delete
+	echo $PART >> /tmp/sfdisk.parts-to-delete
     done
 
     if [ -e /tmp/sfdisk.parts-to-delete ]; then
