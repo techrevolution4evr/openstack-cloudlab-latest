@@ -66,6 +66,12 @@ if [ $NODELETE -eq 0 ]; then
     # Swapoff all swap devices if we are not impotent; they will be
     # removed.
     for dev in `blkid -t TYPE=swap | cut -d: -f1 | xargs` ; do
+	if [ -e /proc/swaps ]; then
+	    grep -q "$dev" /proc/swaps
+	    if [ ! $? -eq 0 ]; then
+		continue
+	    fi
+	fi
 	if [ ! $IMPOTENT -eq 1 ]; then
 	    swapoff $dev
 	    if [ ! $? -eq 0 ]; then
