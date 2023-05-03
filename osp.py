@@ -58,6 +58,12 @@ pc.defineParameter("firewall","Experiment Firewall",
                    portal.ParameterType.BOOLEAN,False,
                    longDescription="Optionally add a CloudLab infrastructure firewall between the public IP addresses of your nodes (and your floating IPs) and the Internet (and rest of CloudLab).")
 
+pc.defineParameter("osFixedNodeController", "Specific Node for Controller",
+                   portal.ParameterType.STRING,"",advanced=True,
+                   longDescription="A specific node or component id to allocate as the controller node.")
+pc.defineParameter("osFixedNodeComputeList", "Specific Node(s) for Compute",
+                   portal.ParameterType.STRING,"",advanced=True,
+                   longDescription="A space-separated list of specific nodesto allocate as compute nodes.  Note that you must increase the general Compute Node Count parameter to be at least as long as this list, and if it is greater than the length of this list, the remaining nodes will not be fixed, and will be assigned according to the Node Type parameter, if set.")
 pc.defineParameter("ubuntuMirrorHost","Ubuntu Package Mirror Hostname",
                    portal.ParameterType.STRING,"",advanced=True,
                    longDescription="A specific Ubuntu package mirror host to use instead of us.archive.ubuntu.com (mirror must have Ubuntu in top-level dir, or you must also edit the mirror path parameter below)")
@@ -531,17 +537,17 @@ def get_next_ipaddr(lan):
     ipaddr = ipdb[lan]['base']
     backpart = ''
 
-    idxlist = range(1,4)
+    idxlist = list(range(1,4))
     idxlist.reverse()
     didinc = False
     for i in idxlist:
-        if ipdb[lan]['values'][i] is -1:
+        if ipdb[lan]['values'][i] == -1:
             break
         if not didinc:
             didinc = True
             ipdb[lan]['values'][i] += 1
             if ipdb[lan]['values'][i] > 254:
-                if ipdb[lan]['values'][i-1] is -1:
+                if ipdb[lan]['values'][i-1] == -1:
                     return ''
                 else:
                     ipdb[lan]['values'][i-1] += 1
@@ -769,12 +775,18 @@ if params.sharedVlanAddress:
         (sharedVlanAddress,sharedVlanNetmask) = (aa[0],aa[1])
     pass
 
+fixedNodeComputeList = []
+if params.osFixedNodeComputeList:
+    fixedNodeComputeList = params.osFixedNodeComputeList.split()
+
 #
 # Add the controller node.
 #
 controller = RSpec.RawPC(params.controllerHost)
 nodes[params.controllerHost] = controller
-if params.osNodeType:
+if params.osFixedNodeController:
+    controller.component_id = params.osFixedNodeController
+elif params.osNodeType:
     controller.hardware_type = params.osNodeType
     pass
 controller.Site("1")
@@ -888,26 +900,30 @@ if params.controllerHost != params.networkManagerHost:
 #
 computeNodeNamesBySite = {}
 computeNodeList = ""
+
 for i in range(1,params.computeNodeCount + 1):
     cpname = "%s-%d" % (params.computeHostBaseName,i)
-    if not computeNodeNamesBySite.has_key(1):
+    if 1 not in computeNodeNamesBySite:
         computeNodeNamesBySite[1] = []
         pass
     computeNodeNamesBySite[1].append(cpname)
     pass
 for i in range(1,params.computeNodeCountSite2 + 1):
     cpname = "%s-s2-%d" % (params.computeHostBaseName,i)
-    if not computeNodeNamesBySite.has_key(2):
+    if 2 not in computeNodeNamesBySite:
         computeNodeNamesBySite[2] = []
         pass
     computeNodeNamesBySite[2].append(cpname)
     pass
 
-for (siteNumber,cpnameList) in computeNodeNamesBySite.iteritems():
+k = 0
+for (siteNumber,cpnameList) in computeNodeNamesBySite.items():
     for cpname in cpnameList:
         cpnode = RSpec.RawPC(cpname)
         nodes[cpname] = cpnode
-        if params.osNodeType and siteNumber == 1:
+        if k < len(fixedNodeComputeList):
+            cpnode.component_id = fixedNodeComputeList[k]
+        elif params.osNodeType and siteNumber == 1:
             cpnode.hardware_type = params.osNodeType
         elif params.osNodeTypeSite2 and siteNumber == 2:
             cpnode.hardware_type = params.osNodeTypeSite2
@@ -948,6 +964,9 @@ for (siteNumber,cpnameList) in computeNodeNamesBySite.iteritems():
             bs.size = str(params.tempBlockstoreSize) + "GB"
             bs.placement = "any"
         computeNodeList += cpname + ' '
+
+        k += 1
+
         pass
     pass
 
@@ -957,7 +976,7 @@ for (siteNumber,cpnameList) in computeNodeNamesBySite.iteritems():
 bsnode = None
 bslink = None
 if params.blockstoreURN != "":
-    if not nodes.has_key(params.blockstoreMountNode):
+    if params.blockstoreMountNode not in nodes:
         #
         # This is a very late time to generate a warning, but that's ok!
         #
@@ -992,7 +1011,7 @@ if params.blockstoreURN != "":
 #
 lbsnode = None
 if params.localBlockstoreURN != "":
-    if not nodes.has_key(params.localBlockstoreMountNode):
+    if params.localBlockstoreMountNode not in nodes:
         #
         # This is a very late time to generate a warning, but that's ok!
         #
@@ -1076,11 +1095,11 @@ class Parameters(RSpec.Resource):
 #        param = ET.SubElement(el,paramXML)
 #        param.text = 'OBJECTHOST="%s"' % (params.objectStorageHost,)
         param = ET.SubElement(el,paramXML)
-        param.text = 'DATALANS="%s"' % (' '.join(map(lambda(lan): lan.client_id,alllans)))
+        param.text = 'DATALANS="%s"' % (' '.join(map(lambda lan: lan.client_id,alllans)))
         param = ET.SubElement(el,paramXML)
-        param.text = 'DATAFLATLANS="%s"' % (' '.join(map(lambda(i): flatlans[i].client_id,range(1,params.flatDataLanCount + 1))))
+        param.text = 'DATAFLATLANS="%s"' % (' '.join(map(lambda i: flatlans[i].client_id,range(1,params.flatDataLanCount + 1))))
         param = ET.SubElement(el,paramXML)
-        param.text = 'DATAVLANS="%s"' % (' '.join(map(lambda(i): vlans[i].client_id,range(1,params.vlanDataLanCount + 1))))
+        param.text = 'DATAVLANS="%s"' % (' '.join(map(lambda i: vlans[i].client_id,range(1,params.vlanDataLanCount + 1))))
         param = ET.SubElement(el,paramXML)
         param.text = 'DATAVXLANS="%d"' % (params.vxlanDataLanCount,)
         param = ET.SubElement(el,paramXML)
