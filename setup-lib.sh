@@ -368,6 +368,13 @@ OSROCKY=18
 OSSTEIN=19
 OSTRAIN=20
 OSUSSURI=21
+OSVICTORIA=22
+OSWALLABY=23
+OSXENA=24
+OSYOGA=25
+OSZED=26
+OSANTELOPE=27
+OSBOBCAT=28
 
 . /etc/lsb-release
 #
@@ -387,6 +394,13 @@ if [ ! "x$OSRELEASE" = "x" ]; then
     if [ $OSCODENAME = "stein" ]; then OSVERSION=$OSSTEIN ; fi
     if [ $OSCODENAME = "train" ]; then OSVERSION=$OSTRAIN ; fi
     if [ $OSCODENAME = "ussuri" ]; then OSVERSION=$OSUSSURI ; fi
+    if [ $OSCODENAME = "victoria" ]; then OSVERSION=$OSVICTORIA ; fi
+    if [ $OSCODENAME = "wallaby" ]; then OSVERSION=$OSWALLABY ; fi
+    if [ $OSCODENAME = "xena" ]; then OSVERSION=$OSXENA ; fi
+    if [ $OSCODENAME = "yoga" ]; then OSVERSION=$OSYOGA ; fi
+    if [ $OSCODENAME = "zed" ]; then OSVERSION=$OSZED ; fi
+    if [ $OSCODENAME = "antelope" ]; then OSVERSION=$OSANTELOPE ; fi
+    if [ $OSCODENAME = "bobcat" ]; then OSVERSION=$OSBOBCAT ; fi
 
     #
     # We only use cloudarchive for LTS images!
