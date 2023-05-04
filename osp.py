@@ -670,7 +670,7 @@ elif params.release == 'yoga':
     image_os = 'UBUNTU20-64'
     image_tag_rel = '-Y'
 elif params.release == 'zed':
-    image_os = 'UBUNTU20-64'
+    image_os = 'UBUNTU22-64'
     image_tag_rel = '-Z'
 else:
     image_os = 'UBUNTU18-64'
