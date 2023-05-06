@@ -210,7 +210,20 @@ maybe_install_packages() {
     if [ ! ${DO_APT_UPGRADE} -eq 0 ] ; then
         # Just do an install/upgrade to make sure the package(s) are installed
 	# and upgraded; we want to try to upgrade the package.
-	$APTGETINSTALL $@
+	ret=1
+	while [ ! $ret -eq 0 ]; do
+	    $APTGETINSTALL $@
+	    ret=$?
+	    if [ ! $ret -eq 0 ]; then
+		lsof /var/lib/dpkg/lock-frontend
+		if [ $? -eq 0 ]; then
+		    echo "WARNING: apt package database locked; will retry until not"
+		    sleep 2
+		else
+		    ret=0
+		fi
+	    fi
+	done
 	return $?
     else
 	# Ok, check if the package is installed; if it is, don't install.
