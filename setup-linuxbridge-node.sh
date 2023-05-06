@@ -83,6 +83,15 @@ ifconfig ${EXTERNAL_NETWORK_BRIDGE} $ctlip netmask $ctlnetmask up
 route add default gw $ctlgw
 
 #
+# If systemd-resolved is enabled, tell it about the new default route.
+#
+grep -q systemd-resolved /etc/resolv.conf
+if [ $? -eq 0 ]; then
+    currentdns=`resolvectl dns ${EXTERNAL_NETWORK_INTERFACE} | sed -nre 's/^.* ([0-9]*\.[0-9]*\.[0-9]*\.[0-9]*)$/\1/p'`
+    resolvectl dns br-ex $currentdns
+fi
+
+#
 # Make the configuration for the $EXTERNAL_NETWORK_INTERFACE be static.
 #
 DNSSERVER=`cat /etc/resolv.conf | grep nameserver | head -1 | awk '{ print $2 }'`

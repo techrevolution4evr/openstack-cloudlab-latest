@@ -1507,10 +1507,16 @@ fi
 # multi-cluster-compatible manner; the bossip could be different for
 # phys node at different clusters.
 #
+# But check /var/emulab/boot/bossip in preference, because we no long
+# assume resolv.conf points to boss.
+#
 if [ ! -f /etc/emulab/bossnode -a $OSVERSION -ge $OSNEWTON -a "${USE_DESIGNATE_AS_RESOLVER}" = "1" ]; then
-    mynameserver=`sed -n -e 's/^nameserver \([0-9]*\.[0-9]*\.[0-9]*\.[0-9]*\).*$/\1/p' < /etc/resolv.conf | head -1`
+    mynameserver=`cat /var/emulab/boot/bossip`
     if [ -z "$mynameserver" ]; then
-	mynameserver=`dig +short boss.$OURDOMAIN A`
+	mynameserver=`sed -n -e 's/^nameserver \([0-9]*\.[0-9]*\.[0-9]*\.[0-9]*\).*$/\1/p' < /etc/resolv.conf | head -1`
+	if [ -z "$mynameserver" ]; then
+	    mynameserver=`dig +short boss.$OURDOMAIN A`
+	fi
     fi
     if [ -n "$mynameserver" ]; then
 	echo $mynameserver > /etc/emulab/bossnode

@@ -91,7 +91,12 @@ ovs-vsctl add-port ${EXTERNAL_NETWORK_BRIDGE} ${EXTERNAL_NETWORK_INTERFACE}
 #
 # Now move the $EXTERNAL_NETWORK_INTERFACE and default route config to ${EXTERNAL_NETWORK_BRIDGE}
 #
-DNSSERVER=`cat /etc/resolv.conf | grep nameserver | head -1 | awk '{ print $2 }'`
+grep -q systemd-resolved /etc/resolv.conf
+if [ $? -eq 0 ]; then
+    DNSSERVER=`resolvectl dns ${EXTERNAL_NETWORK_INTERFACE} | sed -nre 's/^.* ([0-9]*\.[0-9]*\.[0-9]*\.[0-9]*)$/\1/p'`
+else
+    DNSSERVER=`cat /etc/resolv.conf | grep nameserver | head -1 | awk '{ print $2 }'`
+fi
 
 #
 # If we're Mitaka or greater, we have to always re-add our anti-ARP
@@ -217,6 +222,11 @@ fi
 ifconfig ${EXTERNAL_NETWORK_INTERFACE} 0 up
 ifconfig ${EXTERNAL_NETWORK_BRIDGE} $ctlip netmask $ctlnetmask up
 route add default gw $ctlgw
+
+grep -q systemd-resolved /etc/resolv.conf
+if [ $? -eq 0 ]; then
+    resolvectl dns ${EXTERNAL_NETWORK_BRIDGE} $DNSSERVER
+fi
 
 service_restart openvswitch-switch
 
