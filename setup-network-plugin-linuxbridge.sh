@@ -178,6 +178,11 @@ if [ $OSVERSION -ge $OSOCATA ]; then
 	password "${PLACEMENT_PASS}"
 fi
 
+if [ $OSVERSION -ge $OSUSSURI ]; then
+    crudini --set /etc/neutron/neutron.conf experimental \
+	linuxbridge true
+fi
+
 crudini --set /etc/neutron/plugins/ml2/ml2_conf.ini ml2 \
     type_drivers ${network_types}
 crudini --set /etc/neutron/plugins/ml2/ml2_conf.ini ml2 \
