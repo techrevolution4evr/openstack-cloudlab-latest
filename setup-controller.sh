@@ -2126,17 +2126,20 @@ EOF
 	IDVERS=2
     fi
     # Just slap this in :(.
-    if [ $OSVERSION -ge $OSSTEIN ]; then
-	IMAGEVERS='"image": 3,'
-    elif [ $OSVERSION -ge $OSMITAKA ]; then
+    if [ $OSVERSION -ge $OSMITAKA ]; then
 	IMAGEVERS='"image": 2,'
     else
 	IMAGEVERS=""
     fi
+    if [ $OSVERSION -ge $OSSTEIN ]; then
+	VOLVERS='"volume": 3,'
+    else
+	VOLVERS='"volume": 2,'
+    fi
     cat <<EOF >> /etc/openstack-dashboard/local_settings.py
 OPENSTACK_API_VERSIONS = {
     "identity": $IDVERS,
-    "volume": 2,
+    $VOLVERS
     $IMAGEVERS
 }
 EOF
