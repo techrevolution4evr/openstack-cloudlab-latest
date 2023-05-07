@@ -2126,7 +2126,9 @@ EOF
 	IDVERS=2
     fi
     # Just slap this in :(.
-    if [ $OSVERSION -ge $OSMITAKA ]; then
+    if [ $OSVERSION -ge $OSSTEIN ]; then
+	IMAGEVERS='"image": 3,'
+    elif [ $OSVERSION -ge $OSMITAKA ]; then
 	IMAGEVERS='"image": 2,'
     else
 	IMAGEVERS=""
@@ -2157,7 +2159,7 @@ EOF
     # For instance, on Newton, we don't want volume creation to be the
     # default.
     #
-    if [ $OSVERSION -ge $OSNEWTON ]; then
+    if [ $OSVERSION -ge $OSNEWTON -a -e $DIRNAME/etc/horizon-${OSCODENAME}-no-default-volcreate.patch ]; then
 	# Rebuild after successfully patching javascripts.
 	patch -p0 -d / < $DIRNAME/etc/horizon-${OSCODENAME}-no-default-volcreate.patch \
 	    && $PYTHONBINNAME /usr/share/openstack-dashboard/manage.py collectstatic --noinput \
