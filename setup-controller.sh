@@ -2174,6 +2174,100 @@ EOF
 	    && $PYTHONBINNAME /usr/share/openstack-dashboard/manage.py compress
     fi
 
+    if [ -n "$SSLCERTTYPE" -a ! "$SSLCERTTYPE" = "none" ]; then
+	LCNFQDN=`echo $NFQDN | tr '[:upper:]' '[:lower:]'`
+	if [ "$SSLCERTTYPE" = "self" ]; then
+	    CERTPATH="/etc/ssl/easy-rsa/${NFQDN}.crt"
+	    KEYPATH="/etc/ssl/easy-rsa/${NFQDN}.key"
+	elif [ "$SSLCERTTYPE" = "letsencrypt" ]; then
+	    CERTPATH="/etc/letsencrypt/live/${LCNFQDN}/fullchain.pem"
+	    KEYPATH="/etc/letsencrypt/live/${LCNFQDN}/privkey.pem"
+	fi
+
+	cat <<EOF >/etc/apache2/sites-available/openstack-ssl.conf
+<VirtualHost *:80>
+  ServerAdmin webmaster@localhost
+  DocumentRoot /var/www/html
+  #LogLevel info ssl:warn
+  ErrorLog ${APACHE_LOG_DIR}/error.log
+  CustomLog ${APACHE_LOG_DIR}/access.log combined
+  #ServerName $NFQDN
+  <IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{HTTPS} off
+    RewriteCond %{REQUEST_URI} !^/\.well-known/
+    RewriteRule (.*) https://%{HTTP_HOST}%{REQUEST_URI}
+  </IfModule>
+  <IfModule !mod_rewrite.c>
+    Redirect / https://ctl.osz-ovs.powderteam.emulab.net
+  </IfModule>
+</VirtualHost>
+
+<VirtualHost _default_:443>
+  #ServerName $NFQDN
+  #LogLevel info ssl:warn
+  ErrorLog ${APACHE_LOG_DIR}/ssl_error.log
+  CustomLog ${APACHE_LOG_DIR}/ssl_access.log combined
+  SSLEngine On
+  SSLCertificateFile $CERTPATH
+  SSLCertificateKeyFile $KEYPATH
+  #SSLCACertificateFile
+  SetEnvIf User-Agent ".*MSIE.*" nokeepalive ssl-unclean-shutdown
+  Header add Strict-Transport-Security "max-age=15768000"
+  <Location />
+    Options None
+    AllowOverride None
+    # For Apache http server 2.4 and later:
+    #<ifVersion >= 2.4>
+      Require all granted
+    #</ifVersion>
+    # For Apache http server 2.2 and earlier:
+    #<ifVersion < 2.4>
+    #  Order allow,deny
+    #  Allow from all
+    #</ifVersion>
+  </Location>
+
+EOF
+	if [ -e /etc/apache2/conf-available/openstack-dashboard.conf ]; then
+	    cat /etc/apache2/conf-available/openstack-dashboard.conf \
+		>> /etc/apache2/sites-available/openstack-ssl.conf
+	else
+	    cat <<EOF >>/etc/apache2/sites-available/openstack-ssl.conf
+  #WSGIScriptAlias / /usr/share/openstack-dashboard/openstack_dashboard/wsgi.py
+  #WSGIDaemonProcess horizon user=www-data group=www-data processes=3 threads=10
+  #Alias /static /usr/share/openstack-dashboard/openstack_dashboard/static/
+
+  WSGIScriptAlias /horizon /usr/share/openstack-dashboard/openstack_dashboard/wsgi.py process-group=horizon
+  WSGIDaemonProcess horizon user=horizon group=horizon processes=3 threads=10 display-name=%{GROUP}
+  WSGIProcessGroup horizon
+  WSGIApplicationGroup %{GLOBAL}
+
+  Alias /static /var/lib/openstack-dashboard/static/
+  Alias /horizon/static /var/lib/openstack-dashboard/static/
+
+  <Directory /usr/share/openstack-dashboard/openstack_dashboard>
+    Require all granted
+  </Directory>
+
+  <Directory /var/lib/openstack-dashboard/static>
+    Require all granted
+  </Directory>
+EOF
+	fi
+	cat <<EOF >>/etc/apache2/sites-available/openstack-ssl.conf
+</VirtualHost>
+EOF
+
+	a2dissite 000-default
+	a2dissite default-ssl
+	a2enmod ssl
+	a2enmod rewrite
+	a2enmod headers
+	a2disconf openstack-dashboard
+	a2ensite openstack-ssl
+    fi
+
     service_restart apache2
     service_enable apache2
     service_restart memcached
