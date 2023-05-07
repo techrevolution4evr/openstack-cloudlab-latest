@@ -2664,7 +2664,7 @@ if [ -z "${SWIFT_PASS}" ]; then
 	fi
     fi
 
-    maybe_install_packages swift swift-proxy python-swiftclient \
+    maybe_install_packages swift swift-proxy ${PYPKGPREFIX}-swiftclient \
 	${PYPKGPREFIX}-keystoneclient ${PYPKGPREFIX}-keystonemiddleware
     # Swift still wants python2, so install some openstack client deps.
     if [ $OSVERSION -ge $OSSTEIN ]; then
@@ -2829,24 +2829,51 @@ if [ -z "${OBJECT_RING_DONE}" ]; then
     objip=`cat $OURDIR/mgmt-hosts | grep $OBJECTHOST | cut -d ' ' -f 1`
 
     swift-ring-builder account.builder create 10 2 1
-    swift-ring-builder account.builder \
-	add r1z1-${objip}:6002/swiftv1 100
-    swift-ring-builder account.builder \
-	add r1z1-${objip}:6002/swiftv1-2 100
+    if [ $OSVERSION -lt $OSQUEENS ]; then
+	swift-ring-builder account.builder \
+	    add r1z1-${objip}:6002/swiftv1 100
+	swift-ring-builder account.builder \
+	    add r1z1-${objip}:6002/swiftv1-2 100
+    else
+	swift-ring-builder account.builder \
+	    add --region 1 --zone 1 --ip ${objip} --port 6002 \
+	    --device swiftv1 --weight 100
+	swift-ring-builder account.builder \
+	    add --region 1 --zone 1 --ip ${objip} --port 6002 \
+	    --device swiftv1-2 --weight 100
+    fi
     swift-ring-builder account.builder rebalance
 
     swift-ring-builder container.builder create 10 2 1
-    swift-ring-builder container.builder \
-	add r1z1-${objip}:6001/swiftv1 100
-    swift-ring-builder container.builder \
-	add r1z1-${objip}:6001/swiftv1-2 100
+    if [ $OSVERSION -lt $OSQUEENS ]; then
+	swift-ring-builder container.builder \
+	    add r1z1-${objip}:6001/swiftv1 100
+	swift-ring-builder container.builder \
+	    add r1z1-${objip}:6001/swiftv1-2 100
+    else
+	swift-ring-builder container.builder \
+	    add --region 1 --zone 1 --ip ${objip} --port 6001 \
+	    --device swiftv1 --weight 100
+	swift-ring-builder container.builder \
+	    add --region 1 --zone 1 --ip ${objip} --port 6001 \
+	    --device swiftv1-2 --weight 100
+    fi
     swift-ring-builder container.builder rebalance
 
     swift-ring-builder object.builder create 10 2 1
-    swift-ring-builder object.builder \
-	add r1z1-${objip}:6000/swiftv1 100
-    swift-ring-builder object.builder \
-	add r1z1-${objip}:6000/swiftv1-2 100
+    if [ $OSVERSION -lt $OSQUEENS ]; then
+	swift-ring-builder object.builder \
+  	    add r1z1-${objip}:6000/swiftv1 100
+	swift-ring-builder object.builder \
+	    add r1z1-${objip}:6000/swiftv1-2 100
+    else
+	swift-ring-builder object.builder \
+	    add --region 1 --zone 1 --ip ${objip} --port 6000 \
+	    --device swiftv1 --weight 100
+	swift-ring-builder object.builder \
+	    add --region 1 --zone 1 --ip ${objip} --port 6000 \
+	    --device swiftv1-2 --weight 100
+    fi
     swift-ring-builder object.builder rebalance
 
     chown -R swift:swift /etc/swift
