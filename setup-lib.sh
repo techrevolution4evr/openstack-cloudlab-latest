@@ -133,6 +133,7 @@ OSRELEASE=""
 # will be used.
 RESIZEROOT=""
 PUBLICAPIENDPOINTS=0
+SSLCERTTYPE="none"
 
 #
 # We have an 'adminapi' user that gets a random password.  Then, we have
