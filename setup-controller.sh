@@ -2266,6 +2266,28 @@ EOF
 	a2enmod headers
 	a2disconf openstack-dashboard
 	a2ensite openstack-ssl
+
+	# Reconfigure nova novncproxy
+	crudini --set /etc/nova/nova.conf DEFAULT \
+	    ssl_only true
+	crudini --set /etc/nova/nova.conf DEFAULT \
+	    cert $CERTPATH
+	crudini --set /etc/nova/nova.conf DEFAULT \
+	    key $KEYPATH
+	service_restart nova-novncproxy
+
+	# Change the novncproxy_base_url on compute nodes
+	PHOSTS=""
+	mkdir -p $OURDIR/pssh.setup-compute-novncproxy-ssl.stdout \
+	    $OURDIR/pssh.setup-compute-novncproxy-ssl.stderr
+
+	for node in $COMPUTENODES ; do
+	    fqdn=`getfqdn $node`
+	    PHOSTS="$PHOSTS -H $fqdn"
+	done
+	$PSSH $PHOSTS -o $OURDIR/pssh.setup-compute-novncproxy-ssl.stdout \
+	    -e $OURDIR/pssh.setup-compute-novncproxy-ssl.stderr \
+	    "crudini --set /etc/nova/nova.conf vnc novncproxy_base_url 'http://${NFQDN}:6080/vnc_auto.html' && systemctl restart nova-compute"
     fi
 
     service_restart apache2
