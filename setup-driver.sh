@@ -176,6 +176,11 @@ touch $OURDIR/setup-driver-done
 
 if [ "$HOSTNAME" = "$CONTROLLER" ]; then
     #
+    # Maybe setup ssl for dashboard.
+    #
+    $DIRNAME/setup-ssl.sh 1> $OURDIR/setup-ssl.log 2>&1
+    
+    #
     # Wait for networkmanager setup to touch a special file indicating that
     # it's finished all the network stuff and we should setup the controller.
     #
