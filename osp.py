@@ -271,8 +271,9 @@ pc.defineParameter("publicAPIEndpoints","Make Public API Endpoints Reachable ove
                    portal.ParameterType.BOOLEAN,False,advanced=True,
                    longDescription="Make public API endpoints reachable over public internet.  The endpoints are still not protected with SSL, so don't enable this unless you must reach these endpoints remotely and have no other option.")
 pc.defineParameter("sslCertType","SSL Certificate Type",
-                   portal.ParameterType.STRING,"none",advanced=True,
+                   portal.ParameterType.STRING,"none",
                    [("none","None"),("self","Self-Signed"),("letsencrypt","Let's Encrypt")],
+                   advanced=True,
                    longDescription="Choose an SSL Certificate strategy.  By default, we do not use SSL certificates to protect the Dashboard.  You may choose to use self-signed or Let's Encrypt certificates whose trust root is accepted by all modern browsers.")
 #pc.defineParameter("blockStorageHost", "Name of block storage server node",
 #                   portal.ParameterType.STRING, "ctl")
