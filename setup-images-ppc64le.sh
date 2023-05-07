@@ -21,7 +21,7 @@ if [ "$HOSTNAME" != "$CONTROLLER" ]; then
     exit 0;
 fi
 
-logtstart "images-x86_64"
+logtstart "images-ppc64le"
 
 if [ -f $SETTINGS ]; then
     . $SETTINGS
