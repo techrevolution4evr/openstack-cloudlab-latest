@@ -351,7 +351,7 @@ def do_method(module, method, params, URI=None, quiet=False, version=None,
 
         ctx = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
         try:
-            ctx.set_ciphers("DEFAULT:@SECLEVEL=1")
+            ctx.set_ciphers("DEFAULT:@SECLEVEL=0")
         except:
             pass
         if authenticate:
