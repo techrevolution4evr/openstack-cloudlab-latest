@@ -63,7 +63,7 @@ else
     lvcreate -L ${CINDER_LV_SIZE}G -T ${VGNAME}/${VGNAME}-pool
 fi
 
-maybe_install_packages cinder-volume $DBDPACKAGE
+maybe_install_packages cinder-volume $DBDPACKAGE tgt
 
 crudini --set /etc/cinder/cinder.conf \
     database connection "${DBDSTRING}://cinder:$CINDER_DBPASS@$CONTROLLER/cinder"
@@ -153,6 +153,10 @@ else
     crudini --set /etc/cinder/cinder.conf lvm iscsi_helper tgtadm
     crudini --set /etc/cinder/cinder.conf DEFAULT enabled_backends lvm
 fi
+
+cat <<EOF >/etc/tgt/conf.d/cinder_tgt.conf
+include /var/lib/cinder/volumes/*
+EOF
 
 service_restart tgt
 service_enable tgt
