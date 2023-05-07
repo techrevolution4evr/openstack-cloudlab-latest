@@ -1243,7 +1243,7 @@ class Parameters(RSpec.Resource):
         param.text = "PUBLICAPIENDPOINTS=%d" % (int(bool(params.publicAPIEndpoints)))
 
         param = ET.SubElement(el,paramXML)
-        param.text = "SSLCERTTYPE=%d" % (str(params.sslCertType))
+        param.text = "SSLCERTTYPE='%s'" % (str(params.sslCertType))
 
         return el
     pass
