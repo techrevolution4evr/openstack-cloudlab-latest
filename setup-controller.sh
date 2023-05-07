@@ -1345,12 +1345,12 @@ EOF
 	    nova.scheduler.filters.all_filters
 	crudini --set /etc/nova/nova.conf filter_scheduler enabled_filters \
 	    'RetryFilter, AvailabilityZoneFilter, RamFilter, ComputeFilter, ComputeCapabilitiesFilter, ImagePropertiesFilter, ServerGroupAntiAffinityFilter, ServerGroupAffinityFilter'
-    elif [ $OSVERSION -ge $OSTRAIN ]; then
+    elif [ $OSVERSION -ge $OSTRAIN -a $OSVERSION -lt $OSUSSURI ]; then
 	crudini --set /etc/nova/nova.conf filter_scheduler available_filters \
 	    nova.scheduler.filters.all_filters
 	crudini --set /etc/nova/nova.conf filter_scheduler enabled_filters \
 	    'RetryFilter, AvailabilityZoneFilter, ComputeFilter, ComputeCapabilitiesFilter, ImagePropertiesFilter, ServerGroupAntiAffinityFilter, ServerGroupAffinityFilter'
-    elif [ $OSVERSION -gt $OSUSSURI ]; then
+    elif [ $OSVERSION -ge $OSUSSURI ]; then
 	crudini --set /etc/nova/nova.conf filter_scheduler available_filters \
 	    nova.scheduler.filters.all_filters
 	crudini --set /etc/nova/nova.conf filter_scheduler enabled_filters \
