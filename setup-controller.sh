@@ -3011,6 +3011,16 @@ if [ -z "${OBJECT_RING_DONE}" ]; then
     else
 	service_restart swift-proxy
     fi
+    if [ $OSVERSION -ge $OSQUEENS ]; then
+	systemctl restart \
+	    swift-account swift-account-auditor \
+	    swift-account-reaper swift-account-replicator \
+	    swift-container-auditor swift-container-sharder \
+	    swift-container-reconciler swift-container-sync \
+	    swift-container-replicator swift-container-updater \
+	    swift-object swift-object-reconstructor swift-object-replicator \
+	    swift-container swift-object-auditor swift-object-updater
+    fi
 
     echo "OBJECT_RING_DONE=\"1\"" >> $SETTINGS
     logtend "swift-rings"
