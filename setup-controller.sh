@@ -2267,13 +2267,18 @@ EOF
 	a2disconf openstack-dashboard
 	a2ensite openstack-ssl
 
+	# Have to move the cert/key so nova can access it.
+	cp -p $CERTPATH /etc/nova/cert.pem
+	cp -p $KEYPATH /etc/nova/key.pem
+	chown nova /etc/nova/cert.pem /etc/nova/key.pem
+	
 	# Reconfigure nova novncproxy
 	crudini --set /etc/nova/nova.conf DEFAULT \
 	    ssl_only true
 	crudini --set /etc/nova/nova.conf DEFAULT \
-	    cert $CERTPATH
+	    cert /etc/nova/cert.pem
 	crudini --set /etc/nova/nova.conf DEFAULT \
-	    key $KEYPATH
+	    key /etc/nova/key.pem
 	service_restart nova-novncproxy
 
 	# Change the novncproxy_base_url on compute nodes
@@ -2287,7 +2292,7 @@ EOF
 	done
 	$PSSH $PHOSTS -o $OURDIR/pssh.setup-compute-novncproxy-ssl.stdout \
 	    -e $OURDIR/pssh.setup-compute-novncproxy-ssl.stderr \
-	    "crudini --set /etc/nova/nova.conf vnc novncproxy_base_url 'http://${NFQDN}:6080/vnc_auto.html' && systemctl restart nova-compute"
+	    "crudini --set /etc/nova/nova.conf vnc novncproxy_base_url 'https://${NFQDN}:6080/vnc_auto.html' && systemctl restart nova-compute"
     fi
 
     service_restart apache2
