@@ -87,7 +87,11 @@ route add default gw $ctlgw
 #
 grep -q systemd-resolved /etc/resolv.conf
 if [ $? -eq 0 ]; then
-    currentdns=`resolvectl dns ${EXTERNAL_NETWORK_INTERFACE} | sed -nre 's/^.* ([0-9]*\.[0-9]*\.[0-9]*\.[0-9]*)$/\1/p'`
+    if [ -e /var/emulab/boot/bossip ]; then
+	currentdns=`cat /var/emulab/boot/bossip`
+    else
+	currentdns=`resolvectl dns ${EXTERNAL_NETWORK_INTERFACE} | sed -nre 's/^.* ([0-9]*\.[0-9]*\.[0-9]*\.[0-9]*)$/\1/p'`
+    fi
     resolvectl dns br-ex $currentdns
 fi
 

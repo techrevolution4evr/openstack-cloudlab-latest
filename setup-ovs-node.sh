@@ -93,7 +93,11 @@ ovs-vsctl add-port ${EXTERNAL_NETWORK_BRIDGE} ${EXTERNAL_NETWORK_INTERFACE}
 #
 grep -q systemd-resolved /etc/resolv.conf
 if [ $? -eq 0 ]; then
-    DNSSERVER=`resolvectl dns ${EXTERNAL_NETWORK_INTERFACE} | sed -nre 's/^.* ([0-9]*\.[0-9]*\.[0-9]*\.[0-9]*)$/\1/p'`
+    if [ -e /var/emulab/boot/bossip ]; then
+	DNSSERVER=`cat /var/emulab/boot/bossip`
+    else
+	DNSSERVER=`resolvectl dns ${EXTERNAL_NETWORK_INTERFACE} | sed -nre 's/^.* ([0-9]*\.[0-9]*\.[0-9]*\.[0-9]*)$/\1/p'`
+    fi
 else
     DNSSERVER=`cat /etc/resolv.conf | grep nameserver | head -1 | awk '{ print $2 }'`
 fi
