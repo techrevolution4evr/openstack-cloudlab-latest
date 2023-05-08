@@ -226,8 +226,8 @@ pc.defineParameter("enableInboundSshAndIcmp","Enable Inbound SSH and ICMP",
                    longDescription="Enable inbound SSH and ICMP into your instances in the default security group, if you have security groups enabled.")
 
 pc.defineParameter("enableNeutronLoadBalancing","Enable Neutron LBaaS",
-                   portal.ParameterType.BOOLEAN,True,advanced=True,
-                   longDescription="Enable Neutron LBaas for releases >= Newton.")
+                   portal.ParameterType.BOOLEAN,False,advanced=True,
+                   longDescription="Enable Neutron LBaaS for releases >= Newton and <= Ussuri.")
 
 pc.defineParameter("enableNewSerialSupport","Enable new Juno serial consoles",
                    portal.ParameterType.BOOLEAN,False,advanced=True,
