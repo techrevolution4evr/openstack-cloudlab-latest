@@ -3884,6 +3884,11 @@ EOF
             -H "Authorization: Basic $AUTHSTR" \
 	    -d "@$DIRNAME/etc/grafana-default-dashboard-${OSRELEASE}.json" \
 	    http://localhost:3000/api/dashboards/import
+    elif [ $OSVERSION -gt $OSUSSURI ]; then
+	curl -X POST -H 'Content-type: application/json' \
+            -H "Authorization: Basic $AUTHSTR" \
+	    -d "@$DIRNAME/etc/grafana-default-dashboard-ussuri.json" \
+	    http://localhost:3000/api/dashboards/import
     else
 	curl -X POST -H 'Content-type: application/json' \
             -H "Authorization: Basic $AUTHSTR" \

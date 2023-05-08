@@ -467,7 +467,7 @@ passwdHelp += "  When logging in to the Dashboard, use the `admin` user; when lo
 
 grafanaInstructions = ""
 if params.release in [ "pike","queens","rocky","stein","train","ussuri","victoria","wallaby","xena","yoga","zed" ]:
-    grafanaInstructions = "You can also login to [your experiment's Grafana WWW interface](http://{host-%s}:3000/dashboard/db/openstack-instance-statistics?orgId=1) and view OpenStack statistics once you've created some VMs." % (params.controllerHost)
+    grafanaInstructions = "You can also login to [your experiment's Grafana WWW interface](http://{host-%s}:3000/d/T_62H57Zz/openstack-instance-statistics?orgId=1) and view OpenStack statistics once you've created some VMs." % (params.controllerHost)
 
 tourInstructions = \
   """
