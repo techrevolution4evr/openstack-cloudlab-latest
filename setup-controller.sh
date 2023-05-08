@@ -3864,7 +3864,11 @@ EOF
     fi
 
     # Finally, dump a simple default dashboard into place.
-    AUTHSTR=`echo "import base64; import sys; sys.stdout.write(base64.b64encode('admin:$GPASSWD'));" | python`
+    if [ $ISPYTHON3 -eq 1 ]; then
+	AUTHSTR=`echo "import base64; import sys; sys.stdout.write(base64.b64encode('admin:$GPASSWD'.encode('utf8')).decode('utf8'));" | python3`
+    else
+	AUTHSTR=`echo "import base64; import sys; sys.stdout.write(base64.b64encode('admin:$GPASSWD'));" | python`
+    fi
     if [ -f $DIRNAME/etc/grafana-default-dashboard-${OSRELEASE}.json ]; then
 	curl -X POST -H 'Content-type: application/json' \
             -H "Authorization: Basic $AUTHSTR" \
