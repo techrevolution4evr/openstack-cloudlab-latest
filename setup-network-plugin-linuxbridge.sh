@@ -40,7 +40,12 @@ EOF
 
 sysctl -p
 
-maybe_install_packages neutron-plugin-ml2 conntrack
+ret=1
+while [ ! $ret -eq 0 ]; do
+    maybe_install_packages neutron-plugin-ml2 conntrack
+    ret=$?
+    sleep 2
+done
 if [ $OSVERSION -ge $OSROCKY ]; then
     maybe_install_packages neutron-linuxbridge-agent
 else

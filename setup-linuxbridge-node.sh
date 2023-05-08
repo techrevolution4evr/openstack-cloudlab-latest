@@ -506,8 +506,6 @@ fi
 
 # Cheat and use our IPADDR/NETMASK instead of NETWORK/NETMASK below...
 OURNET=`ip addr show br-ex | sed -n -e 's/.*inet \([0-9\.\/]*\) .*/\1/p'`
-# Grab the port that corresponds to our
-OURPORT=`ovs-ofctl show br-ex | sed -n -e "s/[ \t]*\([0-9]*\)(${EXTERNAL_NETWORK_INTERFACE}.*\$/\1/p"`
 
 #
 # Ok, make the anti-ARP spoofing rules live, and ensure they get
