@@ -88,17 +88,14 @@ route add default gw $ctlgw
 grep -q systemd-resolved /etc/resolv.conf
 if [ $? -eq 0 ]; then
     if [ -e /var/emulab/boot/bossip ]; then
-	currentdns=`cat /var/emulab/boot/bossip`
+	DNSSERVER=`cat /var/emulab/boot/bossip`
     else
-	currentdns=`resolvectl dns ${EXTERNAL_NETWORK_INTERFACE} | sed -nre 's/^.* ([0-9]*\.[0-9]*\.[0-9]*\.[0-9]*)$/\1/p'`
+	DNSSERVER=`resolvectl dns ${EXTERNAL_NETWORK_INTERFACE} | sed -nre 's/^.* ([0-9]*\.[0-9]*\.[0-9]*\.[0-9]*)$/\1/p'`
     fi
-    resolvectl dns br-ex $currentdns
+    resolvectl dns br-ex $DNSSERVER
+else
+    DNSSERVER=`cat /etc/resolv.conf | grep nameserver | head -1 | awk '{ print $2 }'`
 fi
-
-#
-# Make the configuration for the $EXTERNAL_NETWORK_INTERFACE be static.
-#
-DNSSERVER=`cat /etc/resolv.conf | grep nameserver | head -1 | awk '{ print $2 }'`
 
 #
 # We need to blow away the Emulab config -- no more dhcp
