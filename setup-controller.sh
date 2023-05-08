@@ -2947,7 +2947,7 @@ if [ -z "${OBJECT_RING_DONE}" ]; then
     cdir=`pwd`
     cd /etc/swift
 
-    objip=`cat $OURDIR/mgmt-hosts | grep $OBJECTHOST | cut -d ' ' -f 1`
+    objip=`cat $OURDIR/mgmt-hosts | grep $OBJECTHOST | awk '{ print $1 }'`
 
     swift-ring-builder account.builder create 10 2 1
     if [ $OSVERSION -lt $OSQUEENS ]; then
