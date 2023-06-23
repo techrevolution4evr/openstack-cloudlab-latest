@@ -11,8 +11,7 @@ import random
 import os.path
 import sys
 
-TBURL = "http://www.emulab.net/downloads/openstack-setup-v33.tar.gz"
-TBCMD = "sudo mkdir -p /root/setup && (if [ -d /local/repository ]; then sudo -H /local/repository/setup-driver.sh 2>&1 | sudo tee /root/setup/setup-driver.log; else sudo -H /tmp/setup/setup-driver.sh 2>&1 | sudo tee /root/setup/setup-driver.log; fi)"
+TBCMD = "sudo mkdir -p /root/setup && ( sudo -H /local/repository/setup-driver.sh 2>&1 | sudo tee /root/setup/setup-driver.log )"
 
 #
 # For now, disable the testbed's root ssh key service until we can remove ours.
@@ -847,8 +846,6 @@ if mgmtlan:
                                            get_netmask(mgmtlan.client_id)))
         pass
     pass
-if TBURL is not None:
-    controller.addService(RSpec.Install(url=TBURL, path="/tmp"))
 controller.addService(RSpec.Execute(shell="sh",command=TBCMD))
 if disableTestbedRootKeys:
     controller.installRootKeys(False, False)
@@ -914,8 +911,6 @@ if params.controllerHost != params.networkManagerHost:
                                   get_netmask(mgmtlan.client_id)))
             pass
         pass
-    if TBURL is not None:
-        networkManager.addService(RSpec.Install(url=TBURL, path="/tmp"))
     networkManager.addService(RSpec.Execute(shell="sh",command=TBCMD))
     if disableTestbedRootKeys:
         networkManager.installRootKeys(False, False)
@@ -985,8 +980,6 @@ for (siteNumber,cpnameList) in computeNodeNamesBySite.items():
                                                    get_netmask(mgmtlan.client_id)))
                 pass
             pass
-        if TBURL is not None:
-            cpnode.addService(RSpec.Install(url=TBURL, path="/tmp"))
         cpnode.addService(RSpec.Execute(shell="sh",command=TBCMD))
         if disableTestbedRootKeys:
             cpnode.installRootKeys(False, False)
