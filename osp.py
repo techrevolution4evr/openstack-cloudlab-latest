@@ -619,6 +619,14 @@ else:
     pass
 
 #
+# From this point, we might automatically enable these parameters, so save to
+# writeable copies, which are used from this point forward.
+#
+fromScratch = params.fromScratch
+doAptDistUpgrade = params.doAptDistUpgrade
+doAptUpdate = params.doAptUpdate
+
+#
 # Construct the disk image URNs we're going to set the various nodes to load.
 # NB: we stopped generating OSNM images at Rocky for x86/aarch64; and at
 # Queens for ppc64le.
@@ -679,17 +687,17 @@ elif params.release == 'zed':
     image_tag_rel = '-Z'
 else:
     image_os = 'UBUNTU18-64'
-    params.fromScratch = True
-    params.doAptDistUpgrade = True
-    params.doAptUpdate = True
+    fromScratch = True
+    doAptDistUpgrade = True
+    doAptUpdate = True
     pass
 
 if params.release in [ "victoria", "wallaby", "xena", "yoga", "zed" ]:
-    params.fromScratch = True
-    params.doAptDistUpgrade = True
-    params.doAptUpdate = True
+    fromScratch = True
+    doAptDistUpgrade = True
+    doAptUpdate = True
 
-if params.fromScratch:
+if fromScratch:
     image_tag_cn = '-STD'
     image_tag_nm = '-STD'
     image_tag_cp = '-STD'
@@ -711,7 +719,7 @@ else:
 #
 if params.osNodeType == 'ibm8335':
     image_urn = 'clemson.cloudlab.us'
-    if params.fromScratch:
+    if fromScratch:
         image_os = 'UBUNTU18-PPC64LE'
         image_tag_cn = image_tag_nm = image_tag_cp = ''
     elif params.release == 'queens':
@@ -1142,11 +1150,11 @@ class Parameters(RSpec.Resource):
         param = ET.SubElement(el,paramXML)
         param.text = 'DO_APT_UPGRADE=%d' % (int(params.doAptUpgrade),)
         param = ET.SubElement(el,paramXML)
-        param.text = 'DO_APT_DIST_UPGRADE=%d' % (int(params.doAptDistUpgrade),)
+        param.text = 'DO_APT_DIST_UPGRADE=%d' % (int(doAptDistUpgrade),)
         param = ET.SubElement(el,paramXML)
         param.text = 'DO_UBUNTU_CLOUDARCHIVE_STAGING=%d' % (int(params.doCloudArchiveStaging),)
         param = ET.SubElement(el,paramXML)
-        param.text = 'DO_APT_UPDATE=%d' % (int(params.doAptUpdate),)
+        param.text = 'DO_APT_UPDATE=%d' % (int(doAptUpdate),)
 
 ###        if params.adminPass and len(params.adminPass) > 0:
 ###            random.seed()
