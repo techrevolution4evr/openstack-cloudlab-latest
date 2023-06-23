@@ -95,6 +95,17 @@ set_var EASYRSA_CA_EXPIRE      3650
 set_var EASYRSA_CERT_EXPIRE    3650
 set_var EASYRSA_BATCH          "1"
 EOF
+    export EASYRSA_REQ_COUNTRY="US"
+    export EASYRSA_REQ_PROVINCE="UT"
+    export EASYRSA_REQ_CITY="Salt Lake City"
+    export EASYRSA_REQ_ORG="$EPID-$EEID"
+    export EASYRSA_REQ_EMAIL="${TRUNCATED_EMAIL}"
+    export EASYRSA_REQ_CN="OSMgmtVPN"
+    export EASYRSA_REQ_OU="OSMgmtVPN"
+    export EASYRSA_KEY_SIZE=2048
+    export EASYRSA_CA_EXPIRE=3650
+    export EASYRSA_CERT_EXPIRE=3650
+    export EASYRSA_BATCH="1"
 fi
 
 mkdir -p $KEY_DIR
@@ -104,7 +115,7 @@ if [ ! -f $OURDIR/vpn-server-done ]; then
     # Handle the case on Ubuntu18 where easy-rsa is broken for openssl 1.1.0
     # (https://github.com/OpenVPN/easy-rsa/issues/159)
     openssl version | grep -iq '^openssl 1\.1\.'
-    if [ $? -eq 0 -a -n "$KEY_CONFIG" -a ! -e $KEY_CONFIG -a -e openssl-1.0.0.cnf ]; then
+    if [ $? -eq 0 -a $OLDEASYRSA -eq 1 -a -e openssl-1.0.0.cnf -a ! -e $KEY_CONFIG ]; then
 	    cp -p openssl-1.0.0.cnf $KEY_CONFIG
 	    echo '# For use with easy-rsa version 2.x and OpenSSL 1.1.0*' >> $KEY_CONFIG
 	    echo '# For use with easy-rsa version 2.0 and OpenSSL 1.1.0*' >> $KEY_CONFIG
