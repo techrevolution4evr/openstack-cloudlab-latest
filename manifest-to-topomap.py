@@ -1,4 +1,7 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
+
+from __future__ import print_function
+from future.utils import iteritems
 
 import sys
 import lxml.etree
@@ -50,16 +53,16 @@ for elm in root.getchildren():
     node_ifaces[name] = ifaces
 
 # Dump the nodes a la topomap
-print "# nodes: vname,links"
+print("# nodes: vname,links")
 for n in node_ifaces.keys():
-    for (i,(addr,mask)) in node_ifaces[n].iteritems():
-        print "%s,%s:%s" % (n,iface_link_map[i],addr)
+    for (i,(addr,mask)) in iteritems(node_ifaces[n]):
+        print("%s,%s:%s" % (n,iface_link_map[i],addr))
 
 # Dump the links a la topomap -- but with fixed cost of 1
-print "# lans: vname,mask,cost"
+print("# lans: vname,mask,cost")
 for m in link_members.keys():
     ifref = link_members[m][0]
     (ip,mask) = allifaces[ifref]
-    print "%s,%s,1" % (m,mask)
+    print("%s,%s,1" % (m,mask))
 
 sys.exit(0)

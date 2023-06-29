@@ -83,9 +83,19 @@ ifconfig ${EXTERNAL_NETWORK_BRIDGE} $ctlip netmask $ctlnetmask up
 route add default gw $ctlgw
 
 #
-# Make the configuration for the $EXTERNAL_NETWORK_INTERFACE be static.
+# If systemd-resolved is enabled, tell it about the new default route.
 #
-DNSSERVER=`cat /etc/resolv.conf | grep nameserver | head -1 | awk '{ print $2 }'`
+grep -q systemd-resolved /etc/resolv.conf
+if [ $? -eq 0 ]; then
+    if [ -e /var/emulab/boot/bossip ]; then
+	DNSSERVER=`cat /var/emulab/boot/bossip`
+    else
+	DNSSERVER=`resolvectl dns ${EXTERNAL_NETWORK_INTERFACE} | sed -nre 's/^.* ([0-9]*\.[0-9]*\.[0-9]*\.[0-9]*)$/\1/p'`
+    fi
+    resolvectl dns br-ex $DNSSERVER
+else
+    DNSSERVER=`cat /etc/resolv.conf | grep nameserver | head -1 | awk '{ print $2 }'`
+fi
 
 #
 # We need to blow away the Emulab config -- no more dhcp
@@ -497,8 +507,6 @@ fi
 
 # Cheat and use our IPADDR/NETMASK instead of NETWORK/NETMASK below...
 OURNET=`ip addr show br-ex | sed -n -e 's/.*inet \([0-9\.\/]*\) .*/\1/p'`
-# Grab the port that corresponds to our
-OURPORT=`ovs-ofctl show br-ex | sed -n -e "s/[ \t]*\([0-9]*\)(${EXTERNAL_NETWORK_INTERFACE}.*\$/\1/p"`
 
 #
 # Ok, make the anti-ARP spoofing rules live, and ensure they get

@@ -29,7 +29,7 @@ fi
 
 cd $IMAGEDIR
 
-for drel in xenial bionic ; do
+for drel in bionic focal jammy ; do
     imgfile=`get_url "http://boss.utah.cloudlab.us/downloads/openstack/${drel}-server-cloudimg-arm64.img https://cloud-images.ubuntu.com/${drel}/current/${drel}-server-cloudimg-arm64.img"`
     imgname=${drel}-server
     if [ ! $? -eq 0 ]; then

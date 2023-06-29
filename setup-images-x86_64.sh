@@ -29,7 +29,7 @@ fi
 
 cd $IMAGEDIR
 
-for drel in xenial bionic ; do
+for drel in bionic focal jammy ; do
     echo "*** Configuring a ${drel}-server x86_64 image ..."
     imgfile=${drel}-server-cloudimg-amd64.img
     imgname=${drel}-server

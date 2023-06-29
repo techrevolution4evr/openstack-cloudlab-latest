@@ -133,6 +133,7 @@ OSRELEASE=""
 # will be used.
 RESIZEROOT=""
 PUBLICAPIENDPOINTS=0
+SSLCERTTYPE="none"
 
 #
 # We have an 'adminapi' user that gets a random password.  Then, we have
@@ -183,112 +184,168 @@ if [ ${DO_APT_INSTALL} -eq 0 ]; then
     APTGETINSTALL="/bin/true ${APTGETINSTALL}"
 fi
 
-##
-## Detect if this was a geni experiment
-##
-grep GENIUSER $SETTINGS
-if [ ! $? -eq 0 ]; then
-    which python
-    if [ ! $? -eq 0 ]; then
-	# We need python to continue; install it.
-	apt-get update
-	apt-get $DPKGOPTS install $APTGETINSTALLOPTS python
+do_apt_update() {
+    if [ ! -f $OURDIR/apt-updated -a "${DO_APT_UPDATE}" = "1" ]; then
+	while true ; do
+	    apt-get update && break
+	    echo "ERROR: apt-get update failed; pausing to try again"
+	    sleep 60
+	done
+	touch $OURDIR/apt-updated
     fi
-    geni-get slice_urn >/dev/null 2>&1
-    if [ $? -eq 0 ]; then
-	GENIUSER=1
-	echo "GENIUSER=1" >> $SETTINGS
+}
+
+are_packages_installed() {
+    retval=1
+    while [ ! -z "$1" ] ; do
+	dpkg -s "$1" >/dev/null 2>&1
+	if [ ! $? -eq 0 ] ; then
+	    retval=0
+	fi
+	shift
+    done
+    return $retval
+}
+
+maybe_install_packages() {
+    if [ ! ${DO_APT_UPGRADE} -eq 0 ] ; then
+        # Just do an install/upgrade to make sure the package(s) are installed
+	# and upgraded; we want to try to upgrade the package.
+	ret=1
+	while [ ! $ret -eq 0 ]; do
+	    $APTGETINSTALL $@
+	    ret=$?
+	    if [ ! $ret -eq 0 ]; then
+		lsof /var/lib/dpkg/lock-frontend
+		if [ $? -eq 0 ]; then
+		    echo "WARNING: apt package database locked; will retry until not"
+		    sleep 2
+		else
+		    ret=0
+		fi
+	    fi
+	done
+	return $?
     else
-	GENIUSER=0
-	echo "GENIUSER=0" >> $SETTINGS
+	# Ok, check if the package is installed; if it is, don't install.
+	# Otherwise, install (and maybe upgrade, due to dependency side effects).
+	# Also, optimize so that we try to install or not install all the
+	# packages at once if none are installed.
+	are_packages_installed $@
+	if [ $? -eq 1 ]; then
+	    return 0
+	fi
+
+	retval=0
+	while [ ! -z "$1" ] ; do
+	    are_packages_installed $1
+	    if [ $? -eq 0 ]; then
+		$APTGETINSTALL $1
+		retval=`expr $retval \| $?`
+	    fi
+	    shift
+	done
+	return $retval
+    fi
+}
+
+##
+## Figure out the system python version.
+##
+python --version
+if [ ! $? -eq 0 ]; then
+    python3 --version
+    if [ $? -eq 0 ]; then
+	PYTHON=python3
+    else
+	are_packages_installed python3
+	success=`expr $? = 0`
+	# Keep trying again with updated cache forever;
+	# we must have python.
+	while [ ! $success -eq 0 ]; do
+	    do_apt_update
+	    apt-get $DPKGOPTS install $APTGETINSTALLOPTS python3
+	    success=$?
+	done
+	PYTHON=python3
     fi
 else
-    grep GENIUSER=1 $SETTINGS
-    if [ $? -eq 0 ]; then
-	GENIUSER=1
-    else
-	GENIUSER=0
-    fi
+    PYTHON=python
 fi
+$PYTHON --version | grep -q "Python 3"
+if [ $? -eq 0 ]; then
+    PYVERS=3
+    PIP=pip3
+    PYTHONPKGPREFIX=python3
+else
+    PYVERS=2
+    PIP=pip
+    PYTHONPKGPREFIX=python
+fi
+PYTHONBIN=`which $PYTHON`
 
 ##
 ## Grab our geni creds, and create a GENI credential cert
 ##
-#
-# NB: force the install of python-cryptography if geniuser
-#
-if [ $GENIUSER -eq 1 ]; then
-    dpkg -s python-cryptography >/dev/null 2>&1
+are_packages_installed ${PYTHONPKGPREFIX}-cryptography ${PYTHONPKGPREFIX}-future \
+    ${PYTHONPKGPREFIX}-six ${PYTHONPKGPREFIX}-lxml ${PYTHONPKGPREFIX}-pip
+success=`expr $? = 0`
+# Keep trying again with updated cache forever;
+# we must have this package.
+while [ ! $success -eq 0 ]; do
+    do_apt_update
+    apt-get $DPKGOPTS install $APTGETINSTALLOPTS ${PYTHONPKGPREFIX}-cryptography \
+	${PYTHONPKGPREFIX}-future ${PYTHONPKGPREFIX}-six ${PYTHONPKGPREFIX}-lxml ${PYTHONPKGPREFIX}-pip
+    success=$?
+done
+
+if [ ! -e $OURDIR/geni.key ]; then
+    geni-get key > $OURDIR/geni.key
+    cat $OURDIR/geni.key | grep -q END\ .\*\PRIVATE\ KEY
     if [ ! $? -eq 0 ]; then
-	apt-get $DPKGOPTS install $APTGETINSTALLOPTS python-cryptography
-	# Keep trying again with updated cache forever;
-	# we must have this package.
-	success=$?
-	while [ ! $success -eq 0 ]; do
-	    apt-get update
-	    apt-get $DPKGOPTS install $APTGETINSTALLOPTS python-cryptography
-	    success=$?
-	done
+	echo "ERROR: could not get geni key; aborting!"
+	exit 1
     fi
+fi
+if [ ! -e $OURDIR/geni.certificate ]; then
+    geni-get certificate > $OURDIR/geni.certificate
+    cat $OURDIR/geni.certificate | grep -q END\ CERTIFICATE
+    if [ ! $? -eq 0 ]; then
+	echo "ERROR: could not get geni cert; aborting!"
+	exit 1
+    fi
+fi
 
-    if [ ! -e $OURDIR/geni.key ]; then
-	geni-get key > $OURDIR/geni.key
-	cat $OURDIR/geni.key | grep -q END\ .\*\PRIVATE\ KEY
-	if [ $? -eq 0 ]; then
-	    HAS_GENI_KEY=1
-	else
-	    HAS_GENI_KEY=0
-	fi
-    else
-	HAS_GENI_KEY=1
-    fi
-    if [ ! -e $OURDIR/geni.certificate ]; then
-	geni-get certificate > $OURDIR/geni.certificate
-	cat $OURDIR/geni.certificate | grep -q END\ CERTIFICATE
-	if [ $? -eq 0 ]; then
-	    HAS_GENI_CERT=1
-	else
-	    HAS_GENI_CERT=0
-	fi
-    else
-	HAS_GENI_CERT=1
-    fi
+if [ ! -e /root/.ssl/encrypted.pem ]; then
+    mkdir -p /root/.ssl
+    chmod 600 /root/.ssl
 
-    if [ ! -e /root/.ssl/encrypted.pem ]; then
-	mkdir -p /root/.ssl
-	chmod 600 /root/.ssl
+    cat $OURDIR/geni.key > /root/.ssl/encrypted.pem
+    cat $OURDIR/geni.certificate >> /root/.ssl/encrypted.pem
+fi
 
-	cat $OURDIR/geni.key > /root/.ssl/encrypted.pem
-	cat $OURDIR/geni.certificate >> /root/.ssl/encrypted.pem
+if [ ! -e $OURDIR/manifests.xml -o $UPDATING -ne 0 ]; then
+    $PYTHON $DIRNAME/getmanifests.py $OURDIR/manifests
+    if [ ! $? -eq 0 ]; then
+	# Fall back to geni-get
+	echo "WARNING: falling back to getting manifest from AM, not Portal -- multi-site experiments will not work fully!"
+	geni-get manifest > $OURDIR/manifests.0.xml
     fi
+fi
 
-    if [ ! -e $OURDIR/manifests.xml -o $UPDATING -ne 0 ]; then
-	if [ $HAS_GENI_CERT -eq 1 ]; then
-	    python $DIRNAME/getmanifests.py $OURDIR/manifests
-	else
-	    # Fall back to geni-get
-	    echo "WARNING: falling back to getting manifest from AM, not Portal -- multi-site experiments will not work fully!"
-	    geni-get manifest > $OURDIR/manifests.0.xml
-	fi
-    fi
+if [ ! -e $OURDIR/encrypted_admin_pass ]; then
+    cat $OURDIR/manifests.0.xml | perl -e '@lines = <STDIN>; $all = join("",@lines); if ($all =~ /^.+<[^:]+:password[^>]*>([^<]+)<\/[^:]+:password>.+/igs) { print $1; }' > $OURDIR/encrypted_admin_pass
+fi
 
-    if [ ! -e $OURDIR/encrypted_admin_pass ]; then
-	cat /root/setup/manifests.0.xml | perl -e '@lines = <STDIN>; $all = join("",@lines); if ($all =~ /^.+<[^:]+:password[^>]*>([^<]+)<\/[^:]+:password>.+/igs) { print $1; }' > $OURDIR/encrypted_admin_pass
-    fi
-
-    if [ ! -e $OURDIR/decrypted_admin_pass -a -s $OURDIR/encrypted_admin_pass ]; then
-	openssl smime -decrypt -inform PEM -inkey geni.key -in $OURDIR/encrypted_admin_pass -out $OURDIR/decrypted_admin_pass
-    fi
+if [ ! -e $OURDIR/decrypted_admin_pass -a -s $OURDIR/encrypted_admin_pass ]; then
+    openssl smime -decrypt -inform PEM -inkey geni.key -in $OURDIR/encrypted_admin_pass -out $OURDIR/decrypted_admin_pass
 fi
 
 #
 # Suck in user configuration overrides, if we haven't already
 #
 if [ ! -e $OURDIR/parameters ]; then
-    touch $OURDIR/parameters
-    if [ $GENIUSER -eq 1 ]; then
-	cat $OURDIR/manifests.0.xml | sed -n -e 's/^[^<]*<[^:]*:parameter>\([^<]*\)<\/[^:]*:parameter>/\1/p' > $OURDIR/parameters
-    fi
+    cat $OURDIR/manifests.0.xml | sed -n -e 's/^[^<]*<[^:]*:parameter>\([^<]*\)<\/[^:]*:parameter>/\1/p' > $OURDIR/parameters
 fi
 . $OURDIR/parameters
 
@@ -368,6 +425,13 @@ OSROCKY=18
 OSSTEIN=19
 OSTRAIN=20
 OSUSSURI=21
+OSVICTORIA=22
+OSWALLABY=23
+OSXENA=24
+OSYOGA=25
+OSZED=26
+OSANTELOPE=27
+OSBOBCAT=28
 
 . /etc/lsb-release
 #
@@ -387,6 +451,13 @@ if [ ! "x$OSRELEASE" = "x" ]; then
     if [ $OSCODENAME = "stein" ]; then OSVERSION=$OSSTEIN ; fi
     if [ $OSCODENAME = "train" ]; then OSVERSION=$OSTRAIN ; fi
     if [ $OSCODENAME = "ussuri" ]; then OSVERSION=$OSUSSURI ; fi
+    if [ $OSCODENAME = "victoria" ]; then OSVERSION=$OSVICTORIA ; fi
+    if [ $OSCODENAME = "wallaby" ]; then OSVERSION=$OSWALLABY ; fi
+    if [ $OSCODENAME = "xena" ]; then OSVERSION=$OSXENA ; fi
+    if [ $OSCODENAME = "yoga" ]; then OSVERSION=$OSYOGA ; fi
+    if [ $OSCODENAME = "zed" ]; then OSVERSION=$OSZED ; fi
+    if [ $OSCODENAME = "antelope" ]; then OSVERSION=$OSANTELOPE ; fi
+    if [ $OSCODENAME = "bobcat" ]; then OSVERSION=$OSBOBCAT ; fi
 
     #
     # We only use cloudarchive for LTS images!
@@ -447,22 +518,17 @@ if [ $OSVERSION -ge $OSSTEIN ]; then
     # python3-cryptography for setup-user-info.py, because that file
     # must be run by whatever python version contains the novaclient
     # library.  And we don't know that we need that until here, unlike
-    # above where we install the v2 python-cryptography.
+    # above where we may have installed the v2 python-cryptography.
     #
-    if [ $GENIUSER -eq 1 ]; then
-	dpkg -s python-cryptography >/dev/null 2>&1
-	if [ ! $? -eq 0 ]; then
-	    apt-get $DPKGOPTS install $APTGETINSTALLOPTS ${PYTHONBINNAME}-cryptography
-	    # Keep trying again with updated cache forever;
-	    # we must have this package.
-	    success=$?
-	    while [ ! $success -eq 0 ]; do
-		apt-get update
-		apt-get $DPKGOPTS install $APTGETINSTALLOPTS ${PYTHONBINNAME}-cryptography
-		success=$?
-	    done
-	fi
-    fi
+    maybe_install_packages ${PYTHONBINNAME}-cryptography
+    # Keep trying again with updated cache forever;
+    # we must have this package.
+    success=$?
+    while [ ! $success -eq 0 ]; do
+	do_apt_update
+	maybe_install_packages ${PYTHONBINNAME}-cryptography
+	success=$?
+    done
 fi
 
 #
@@ -544,22 +610,13 @@ else
     DBDSTRING="mysql"
 fi
 
-if [ $GENIUSER -eq 1 ]; then
-    SWAPPER_EMAIL=`geni-get slice_email`
-else
-    SWAPPER_EMAIL="$SWAPPER@$OURDOMAIN"
-fi
+SWAPPER_EMAIL=`geni-get slice_email`
 
-if [ $GENIUSER -eq 1 ]; then
-    PUBLICADDRS=`cat $OURDIR/manifests.*.xml | perl -e '$found = 0; while (<STDIN>) { if ($_ =~ /\<[\d\w:]*routable_pool [^\>\<]*\/>/) { print STDERR "DEBUG: found empty pool: $_\n"; next; } if ($_ =~ /\<[\d\w:]*routable_pool [^\>]*client_id=['"'"'"]'$NETWORKMANAGER'['"'"'"]/) { $found = 1; print STDERR "DEBUG: found: $_\n" } if ($found) { while ($_ =~ m/\<emulab:ipv4 address="([\d.]+)\" netmask=\"([\d\.]+)\"/g) { print "$1\n"; } } if ($found && $_ =~ /routable_pool\>/) { print STDERR "DEBUG: end found: $_\n"; $found = 0; } }' | xargs`
-    PUBLICCOUNT=0
-    for ip in $PUBLICADDRS ; do
-	PUBLICCOUNT=`expr $PUBLICCOUNT + 1`
-    done
-else
-    PUBLICADDRS=""
-    PUBLICCOUNT=0
-fi
+PUBLICADDRS=`cat $OURDIR/manifests.*.xml | perl -e '$found = 0; while (<STDIN>) { if ($_ =~ /\<[\d\w:]*routable_pool [^\>\<]*\/>/) { print STDERR "DEBUG: found empty pool: $_\n"; next; } if ($_ =~ /\<[\d\w:]*routable_pool [^\>]*client_id=['"'"'"]'$NETWORKMANAGER'['"'"'"]/) { $found = 1; print STDERR "DEBUG: found: $_\n" } if ($found) { while ($_ =~ m/\<emulab:ipv4 address="([\d.]+)\" netmask=\"([\d\.]+)\"/g) { print "$1\n"; } } if ($found && $_ =~ /routable_pool\>/) { print STDERR "DEBUG: end found: $_\n"; $found = 0; } }' | xargs`
+PUBLICCOUNT=0
+for ip in $PUBLICADDRS ; do
+    PUBLICCOUNT=`expr $PUBLICCOUNT + 1`
+done
 
 #
 # Grab our topomap so we can see how many nodes we have.
@@ -785,47 +842,6 @@ if [ ! -f $OURDIR/apt-updated -a "${DO_APT_UPDATE}" = "1" ]; then
     apt-get update
     touch $OURDIR/apt-updated
 fi
-
-are_packages_installed() {
-    retval=1
-    while [ ! -z "$1" ] ; do
-	dpkg -s "$1" >/dev/null 2>&1
-	if [ ! $? -eq 0 ] ; then
-	    retval=0
-	fi
-	shift
-    done
-    return $retval
-}
-
-maybe_install_packages() {
-    if [ ! ${DO_APT_UPGRADE} -eq 0 ] ; then
-        # Just do an install/upgrade to make sure the package(s) are installed
-	# and upgraded; we want to try to upgrade the package.
-	$APTGETINSTALL $@
-	return $?
-    else
-	# Ok, check if the package is installed; if it is, don't install.
-	# Otherwise, install (and maybe upgrade, due to dependency side effects).
-	# Also, optimize so that we try to install or not install all the
-	# packages at once if none are installed.
-	are_packages_installed $@
-	if [ $? -eq 1 ]; then
-	    return 0
-	fi
-
-	retval=0
-	while [ ! -z "$1" ] ; do
-	    are_packages_installed $1
-	    if [ $? -eq 0 ]; then
-		$APTGETINSTALL $1
-		retval=`expr $retval \| $?`
-	    fi
-	    shift
-	done
-	return $retval
-    fi
-}
 
 if [ ! -f $OURDIR/cloudarchive-added -a "${DO_UBUNTU_CLOUDARCHIVE}" = "1" ]; then
     #if [ "${DISTRIB_CODENAME}" = "trusty" ] ; then
@@ -1505,10 +1521,16 @@ fi
 # multi-cluster-compatible manner; the bossip could be different for
 # phys node at different clusters.
 #
+# But check /var/emulab/boot/bossip in preference, because we no long
+# assume resolv.conf points to boss.
+#
 if [ ! -f /etc/emulab/bossnode -a $OSVERSION -ge $OSNEWTON -a "${USE_DESIGNATE_AS_RESOLVER}" = "1" ]; then
-    mynameserver=`sed -n -e 's/^nameserver \([0-9]*\.[0-9]*\.[0-9]*\.[0-9]*\).*$/\1/p' < /etc/resolv.conf | head -1`
+    mynameserver=`cat /var/emulab/boot/bossip`
     if [ -z "$mynameserver" ]; then
-	mynameserver=`dig +short boss.$OURDOMAIN A`
+	mynameserver=`sed -n -e 's/^nameserver \([0-9]*\.[0-9]*\.[0-9]*\.[0-9]*\).*$/\1/p' < /etc/resolv.conf | head -1`
+	if [ -z "$mynameserver" ]; then
+	    mynameserver=`dig +short boss.$OURDOMAIN A`
+	fi
     fi
     if [ -n "$mynameserver" ]; then
 	echo $mynameserver > /etc/emulab/bossnode

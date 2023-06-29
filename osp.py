@@ -11,8 +11,7 @@ import random
 import os.path
 import sys
 
-TBURL = "http://www.emulab.net/downloads/openstack-setup-v33.tar.gz"
-TBCMD = "sudo mkdir -p /root/setup && (if [ -d /local/repository ]; then sudo -H /local/repository/setup-driver.sh 2>&1 | sudo tee /root/setup/setup-driver.log; else sudo -H /tmp/setup/setup-driver.sh 2>&1 | sudo tee /root/setup/setup-driver.log; fi)"
+TBCMD = "sudo mkdir -p /root/setup && ( sudo -H /local/repository/setup-driver.sh 2>&1 | sudo tee /root/setup/setup-driver.log )"
 
 #
 # For now, disable the testbed's root ssh key service until we can remove ours.
@@ -35,8 +34,8 @@ pc = portal.Context()
 # Define *many* parameters; see the help docs in geni-lib to learn how to modify.
 #
 pc.defineParameter("release","OpenStack Release",
-                   portal.ParameterType.STRING,"ussuri",[("ussuri","Ussuri"),("train","Train"),("stein","Stein"),("rocky","Rocky"),("queens","Queens"),("pike","Pike"),("ocata","Ocata"),("newton","Newton"),("mitaka","Mitaka"),("liberty","Liberty (deprecated)"),("kilo","Kilo (deprecated)"),("juno","Juno (deprecated)")],
-                   longDescription="We provide OpenStack Ussuri (Ubuntu 20.04, python3), Train, Stein (Ubuntu 18.04, python3), Rocky, Queens (Ubuntu 18.04, python2), Pike, Ocata, Newton, Mitaka (Ubuntu 16.04, python2) (deprecated: Liberty (Ubuntu 15.10, python2); Kilo (Ubuntu 15.04, python2); or Juno (Ubuntu 14.10, python2)).  OpenStack is installed from packages available on these distributions.")
+                   portal.ParameterType.STRING,"ussuri",[("zed","Zed"),("yoga","Yoga"),("xena","Xena"),("wallaby","Wallaby"),("victoria","Victoria"),("ussuri","Ussuri"),("train","Train (deprecated)"),("stein","Stein (deprecated)"),("rocky","Rocky (deprecated)"),("queens","Queens (deprecated)"),("pike","Pike (deprecated)"),("ocata","Ocata (deprecated)"),("newton","Newton (deprecated)"),("mitaka","Mitaka (deprecated)"),("liberty","Liberty (deprecated)"),("kilo","Kilo (deprecated)"),("juno","Juno (deprecated)")],
+                   longDescription="We provide OpenStack Zed (Ubuntu 22.04), Xena, Wallaby, Victoria, Ussuri (Ubuntu 20.04, python3) (deprecated: Train, Stein (Ubuntu 18.04, python3), Rocky, Queens (Ubuntu 18.04, python2), Pike, Ocata, Newton, Mitaka (Ubuntu 16.04, python2), Liberty (Ubuntu 15.10, python2); Kilo (Ubuntu 15.04, python2); or Juno (Ubuntu 14.10, python2)).  OpenStack is installed from packages available on these distributions.")
 pc.defineParameter("computeNodeCount", "Number of compute nodes (at Site 1)",
                    portal.ParameterType.INTEGER, 1)
 pc.defineParameter("osNodeType", "Hardware Type",
@@ -58,6 +57,12 @@ pc.defineParameter("firewall","Experiment Firewall",
                    portal.ParameterType.BOOLEAN,False,
                    longDescription="Optionally add a CloudLab infrastructure firewall between the public IP addresses of your nodes (and your floating IPs) and the Internet (and rest of CloudLab).")
 
+pc.defineParameter("osFixedNodeController", "Specific Node for Controller",
+                   portal.ParameterType.STRING,"",advanced=True,
+                   longDescription="A specific node or component id to allocate as the controller node.")
+pc.defineParameter("osFixedNodeComputeList", "Specific Node(s) for Compute",
+                   portal.ParameterType.STRING,"",advanced=True,
+                   longDescription="A space-separated list of specific nodesto allocate as compute nodes.  Note that you must increase the general Compute Node Count parameter to be at least as long as this list, and if it is greater than the length of this list, the remaining nodes will not be fixed, and will be assigned according to the Node Type parameter, if set.")
 pc.defineParameter("ubuntuMirrorHost","Ubuntu Package Mirror Hostname",
                    portal.ParameterType.STRING,"",advanced=True,
                    longDescription="A specific Ubuntu package mirror host to use instead of us.archive.ubuntu.com (mirror must have Ubuntu in top-level dir, or you must also edit the mirror path parameter below)")
@@ -220,8 +225,8 @@ pc.defineParameter("enableInboundSshAndIcmp","Enable Inbound SSH and ICMP",
                    longDescription="Enable inbound SSH and ICMP into your instances in the default security group, if you have security groups enabled.")
 
 pc.defineParameter("enableNeutronLoadBalancing","Enable Neutron LBaaS",
-                   portal.ParameterType.BOOLEAN,True,advanced=True,
-                   longDescription="Enable Neutron LBaas for releases >= Newton.")
+                   portal.ParameterType.BOOLEAN,False,advanced=True,
+                   longDescription="Enable Neutron LBaaS for releases >= Newton and <= Ussuri.")
 
 pc.defineParameter("enableNewSerialSupport","Enable new Juno serial consoles",
                    portal.ParameterType.BOOLEAN,False,advanced=True,
@@ -264,6 +269,11 @@ pc.defineParameter("networkManagerDiskImage","Network Manager Node Disk Image",
 pc.defineParameter("publicAPIEndpoints","Make Public API Endpoints Reachable over Internet",
                    portal.ParameterType.BOOLEAN,False,advanced=True,
                    longDescription="Make public API endpoints reachable over public internet.  The endpoints are still not protected with SSL, so don't enable this unless you must reach these endpoints remotely and have no other option.")
+pc.defineParameter("sslCertType","SSL Certificate Type",
+                   portal.ParameterType.STRING,"none",
+                   [("none","None"),("self","Self-Signed"),("letsencrypt","Let's Encrypt")],
+                   advanced=True,
+                   longDescription="Choose an SSL Certificate strategy.  By default, we do not use SSL certificates to protect the Dashboard.  You may choose to use self-signed or Let's Encrypt certificates whose trust root is accepted by all modern browsers.")
 #pc.defineParameter("blockStorageHost", "Name of block storage server node",
 #                   portal.ParameterType.STRING, "ctl")
 #pc.defineParameter("objectStorageHost", "Name of object storage server node",
@@ -445,7 +455,7 @@ else:
 pc.verifyParameters()
 
 tourDescription = \
-  "This profile provides a highly-configurable OpenStack instance with a controller and one or more compute nodes (potentially at multiple Cloudlab sites) (and optionally a network manager node, in a split configuration). This profile runs x86, arm64, and POWER8 (Queens and up) nodes. It sets up OpenStack Ussuri (Ubuntu 20.04, python3), Train, Stein (Ubuntu 18.04, python3), Rocky, Queens (Ubuntu 18.04, python2), Pike, Ocata, Newton, or Mitaka (Ubuntu 16.04, python2) (Liberty on 15.10, Kilo on 15.04, and Juno on 14.10, python2, *deprecated*) according to your choice, and configures all OpenStack services, pulls in some VM disk images, and creates basic networks accessible via floating IPs.  You'll be able to create instances and access them over the Internet in just a few minutes. When you click the Instantiate button, you'll be presented with a list of parameters that you can change to control what your OpenStack instance will look like; **carefully** read the parameter documentation on that page (or in the Instructions) to understand the various features available to you."
+  "This profile provides a highly-configurable OpenStack instance with a controller and one or more compute nodes (potentially at multiple Cloudlab sites) (and optionally a network manager node, in a split configuration). This profile runs x86, arm64, and POWER8 (Queens and up) nodes. It sets up OpenStack Zed (Ubuntu 22.04), Xena, Wallaby, Victoria, Ussuri (Ubuntu 20.04, python3), Train, Stein (Ubuntu 18.04, python3), Rocky, Queens (Ubuntu 18.04, python2), Pike, Ocata, Newton, or Mitaka (Ubuntu 16.04, python2) (Liberty on 15.10, Kilo on 15.04, and Juno on 14.10, python2, *deprecated*) according to your choice, and configures all OpenStack services, pulls in some VM disk images, and creates basic networks accessible via floating IPs.  You'll be able to create instances and access them over the Internet in just a few minutes. When you click the Instantiate button, you'll be presented with a list of parameters that you can change to control what your OpenStack instance will look like; **carefully** read the parameter documentation on that page (or in the Instructions) to understand the various features available to you."
 
 ###if not params.adminPass or len(params.adminPass) == 0:
 passwdHelp = "Your OpenStack admin and instance VM password is randomly-generated by Cloudlab, and it is: `{password-adminPass}` ."
@@ -455,8 +465,8 @@ passwdHelp = "Your OpenStack admin and instance VM password is randomly-generate
 passwdHelp += "  When logging in to the Dashboard, use the `admin` user; when logging into instance VMs, use the `ubuntu` user.  If you have selected Mitaka or newer, use 'default' as the Domain at the login prompt."
 
 grafanaInstructions = ""
-if params.release in [ "pike","queens","rocky","stein","train","ussuri" ]:
-    grafanaInstructions = "You can also login to [your experiment's Grafana WWW interface](http://{host-%s}:3000/dashboard/db/openstack-instance-statistics?orgId=1) and view OpenStack statistics once you've created some VMs." % (params.controllerHost)
+if params.release in [ "pike","queens","rocky","stein","train","ussuri","victoria","wallaby","xena","yoga","zed" ]:
+    grafanaInstructions = "You can also login to [your experiment's Grafana WWW interface](http://{host-%s}:3000/d/T_62H57Zz/openstack-instance-statistics?orgId=1) and view OpenStack statistics once you've created some VMs." % (params.controllerHost)
 
 tourInstructions = \
   """
@@ -531,17 +541,17 @@ def get_next_ipaddr(lan):
     ipaddr = ipdb[lan]['base']
     backpart = ''
 
-    idxlist = range(1,4)
+    idxlist = list(range(1,4))
     idxlist.reverse()
     didinc = False
     for i in idxlist:
-        if ipdb[lan]['values'][i] is -1:
+        if ipdb[lan]['values'][i] == -1:
             break
         if not didinc:
             didinc = True
             ipdb[lan]['values'][i] += 1
             if ipdb[lan]['values'][i] > 254:
-                if ipdb[lan]['values'][i-1] is -1:
+                if ipdb[lan]['values'][i-1] == -1:
                     return ''
                 else:
                     ipdb[lan]['values'][i-1] += 1
@@ -608,6 +618,14 @@ else:
     pass
 
 #
+# From this point, we might automatically enable these parameters, so save to
+# writeable copies, which are used from this point forward.
+#
+fromScratch = params.fromScratch
+doAptDistUpgrade = params.doAptDistUpgrade
+doAptUpdate = params.doAptUpdate
+
+#
 # Construct the disk image URNs we're going to set the various nodes to load.
 # NB: we stopped generating OSNM images at Rocky for x86/aarch64; and at
 # Queens for ppc64le.
@@ -651,14 +669,34 @@ elif params.release == 'train':
 elif params.release == 'ussuri':
     image_os = 'UBUNTU20-64'
     image_tag_rel = '-U'
+elif params.release == 'victoria':
+    image_os = 'UBUNTU20-64'
+    image_tag_rel = '-V'
+elif params.release == 'wallaby':
+    image_os = 'UBUNTU20-64'
+    image_tag_rel = '-W'
+elif params.release == 'xena':
+    image_os = 'UBUNTU20-64'
+    image_tag_rel = '-X'
+elif params.release == 'yoga':
+    image_os = 'UBUNTU20-64'
+    image_tag_rel = '-Y'
+elif params.release == 'zed':
+    image_os = 'UBUNTU22-64'
+    image_tag_rel = '-Z'
 else:
-    image_os = 'UBUNTU16-64'
-    params.fromScratch = True
-    params.doAptDistUpgrade = True
-    params.doAptUpdate = True
+    image_os = 'UBUNTU18-64'
+    fromScratch = True
+    doAptDistUpgrade = True
+    doAptUpdate = True
     pass
 
-if params.fromScratch:
+if params.release in [ "victoria", "wallaby", "xena", "yoga", "zed" ]:
+    fromScratch = True
+    doAptDistUpgrade = True
+    doAptUpdate = True
+
+if fromScratch:
     image_tag_cn = '-STD'
     image_tag_nm = '-STD'
     image_tag_cp = '-STD'
@@ -666,7 +704,7 @@ if params.fromScratch:
 else:
     image_tag_cn = '-OSCN'
     image_tag_nm = '-OSNM'
-    if params.release in [ 'rocky','stein','train','ussuri' ]:
+    if params.release in [ 'rocky','stein','train','ussuri','victoria','wallaby','xena','yoga','zed' ]:
         # See above comment; we stopped generating OSNM images at Rocky
         # for x86/aarch64; and at Queens for ppc64le.
         image_tag_nm = '-STD'
@@ -680,7 +718,7 @@ else:
 #
 if params.osNodeType == 'ibm8335':
     image_urn = 'clemson.cloudlab.us'
-    if params.fromScratch:
+    if fromScratch:
         image_os = 'UBUNTU18-PPC64LE'
         image_tag_cn = image_tag_nm = image_tag_cp = ''
     elif params.release == 'queens':
@@ -689,7 +727,7 @@ if params.osNodeType == 'ibm8335':
         # for x86/aarch64; and at Queens for ppc64le.
         image_tag_nm = ''
 
-    if params.release not in [ 'queens','rocky','stein','train','ussuri' ]:
+    if params.release not in [ 'queens','rocky','stein','train','ussuri','victoria','wallaby','xena','yoga','zed' ]:
         perr = portal.ParameterError(
             "You can only run the Queens release, or greater, on `ibm8335` (POWER8) hardware!",
             ['release','osNodeType'])
@@ -769,12 +807,18 @@ if params.sharedVlanAddress:
         (sharedVlanAddress,sharedVlanNetmask) = (aa[0],aa[1])
     pass
 
+fixedNodeComputeList = []
+if params.osFixedNodeComputeList:
+    fixedNodeComputeList = params.osFixedNodeComputeList.split()
+
 #
 # Add the controller node.
 #
 controller = RSpec.RawPC(params.controllerHost)
 nodes[params.controllerHost] = controller
-if params.osNodeType:
+if params.osFixedNodeController:
+    controller.component_id = params.osFixedNodeController
+elif params.osNodeType:
     controller.hardware_type = params.osNodeType
     pass
 controller.Site("1")
@@ -802,8 +846,6 @@ if mgmtlan:
                                            get_netmask(mgmtlan.client_id)))
         pass
     pass
-if TBURL is not None:
-    controller.addService(RSpec.Install(url=TBURL, path="/tmp"))
 controller.addService(RSpec.Execute(shell="sh",command=TBCMD))
 if disableTestbedRootKeys:
     controller.installRootKeys(False, False)
@@ -869,8 +911,6 @@ if params.controllerHost != params.networkManagerHost:
                                   get_netmask(mgmtlan.client_id)))
             pass
         pass
-    if TBURL is not None:
-        networkManager.addService(RSpec.Install(url=TBURL, path="/tmp"))
     networkManager.addService(RSpec.Execute(shell="sh",command=TBCMD))
     if disableTestbedRootKeys:
         networkManager.installRootKeys(False, False)
@@ -888,26 +928,30 @@ if params.controllerHost != params.networkManagerHost:
 #
 computeNodeNamesBySite = {}
 computeNodeList = ""
+
 for i in range(1,params.computeNodeCount + 1):
     cpname = "%s-%d" % (params.computeHostBaseName,i)
-    if not computeNodeNamesBySite.has_key(1):
+    if 1 not in computeNodeNamesBySite:
         computeNodeNamesBySite[1] = []
         pass
     computeNodeNamesBySite[1].append(cpname)
     pass
 for i in range(1,params.computeNodeCountSite2 + 1):
     cpname = "%s-s2-%d" % (params.computeHostBaseName,i)
-    if not computeNodeNamesBySite.has_key(2):
+    if 2 not in computeNodeNamesBySite:
         computeNodeNamesBySite[2] = []
         pass
     computeNodeNamesBySite[2].append(cpname)
     pass
 
-for (siteNumber,cpnameList) in computeNodeNamesBySite.iteritems():
+k = 0
+for (siteNumber,cpnameList) in computeNodeNamesBySite.items():
     for cpname in cpnameList:
         cpnode = RSpec.RawPC(cpname)
         nodes[cpname] = cpnode
-        if params.osNodeType and siteNumber == 1:
+        if k < len(fixedNodeComputeList):
+            cpnode.component_id = fixedNodeComputeList[k]
+        elif params.osNodeType and siteNumber == 1:
             cpnode.hardware_type = params.osNodeType
         elif params.osNodeTypeSite2 and siteNumber == 2:
             cpnode.hardware_type = params.osNodeTypeSite2
@@ -936,8 +980,6 @@ for (siteNumber,cpnameList) in computeNodeNamesBySite.iteritems():
                                                    get_netmask(mgmtlan.client_id)))
                 pass
             pass
-        if TBURL is not None:
-            cpnode.addService(RSpec.Install(url=TBURL, path="/tmp"))
         cpnode.addService(RSpec.Execute(shell="sh",command=TBCMD))
         if disableTestbedRootKeys:
             cpnode.installRootKeys(False, False)
@@ -948,6 +990,9 @@ for (siteNumber,cpnameList) in computeNodeNamesBySite.iteritems():
             bs.size = str(params.tempBlockstoreSize) + "GB"
             bs.placement = "any"
         computeNodeList += cpname + ' '
+
+        k += 1
+
         pass
     pass
 
@@ -957,7 +1002,7 @@ for (siteNumber,cpnameList) in computeNodeNamesBySite.iteritems():
 bsnode = None
 bslink = None
 if params.blockstoreURN != "":
-    if not nodes.has_key(params.blockstoreMountNode):
+    if params.blockstoreMountNode not in nodes:
         #
         # This is a very late time to generate a warning, but that's ok!
         #
@@ -992,7 +1037,7 @@ if params.blockstoreURN != "":
 #
 lbsnode = None
 if params.localBlockstoreURN != "":
-    if not nodes.has_key(params.localBlockstoreMountNode):
+    if params.localBlockstoreMountNode not in nodes:
         #
         # This is a very late time to generate a warning, but that's ok!
         #
@@ -1076,11 +1121,11 @@ class Parameters(RSpec.Resource):
 #        param = ET.SubElement(el,paramXML)
 #        param.text = 'OBJECTHOST="%s"' % (params.objectStorageHost,)
         param = ET.SubElement(el,paramXML)
-        param.text = 'DATALANS="%s"' % (' '.join(map(lambda(lan): lan.client_id,alllans)))
+        param.text = 'DATALANS="%s"' % (' '.join(map(lambda lan: lan.client_id,alllans)))
         param = ET.SubElement(el,paramXML)
-        param.text = 'DATAFLATLANS="%s"' % (' '.join(map(lambda(i): flatlans[i].client_id,range(1,params.flatDataLanCount + 1))))
+        param.text = 'DATAFLATLANS="%s"' % (' '.join(map(lambda i: flatlans[i].client_id,range(1,params.flatDataLanCount + 1))))
         param = ET.SubElement(el,paramXML)
-        param.text = 'DATAVLANS="%s"' % (' '.join(map(lambda(i): vlans[i].client_id,range(1,params.vlanDataLanCount + 1))))
+        param.text = 'DATAVLANS="%s"' % (' '.join(map(lambda i: vlans[i].client_id,range(1,params.vlanDataLanCount + 1))))
         param = ET.SubElement(el,paramXML)
         param.text = 'DATAVXLANS="%d"' % (params.vxlanDataLanCount,)
         param = ET.SubElement(el,paramXML)
@@ -1098,11 +1143,11 @@ class Parameters(RSpec.Resource):
         param = ET.SubElement(el,paramXML)
         param.text = 'DO_APT_UPGRADE=%d' % (int(params.doAptUpgrade),)
         param = ET.SubElement(el,paramXML)
-        param.text = 'DO_APT_DIST_UPGRADE=%d' % (int(params.doAptDistUpgrade),)
+        param.text = 'DO_APT_DIST_UPGRADE=%d' % (int(doAptDistUpgrade),)
         param = ET.SubElement(el,paramXML)
         param.text = 'DO_UBUNTU_CLOUDARCHIVE_STAGING=%d' % (int(params.doCloudArchiveStaging),)
         param = ET.SubElement(el,paramXML)
-        param.text = 'DO_APT_UPDATE=%d' % (int(params.doAptUpdate),)
+        param.text = 'DO_APT_UPDATE=%d' % (int(doAptUpdate),)
 
 ###        if params.adminPass and len(params.adminPass) > 0:
 ###            random.seed()
@@ -1202,6 +1247,9 @@ class Parameters(RSpec.Resource):
 
         param = ET.SubElement(el,paramXML)
         param.text = "PUBLICAPIENDPOINTS=%d" % (int(bool(params.publicAPIEndpoints)))
+
+        param = ET.SubElement(el,paramXML)
+        param.text = "SSLCERTTYPE='%s'" % (str(params.sslCertType))
 
         return el
     pass

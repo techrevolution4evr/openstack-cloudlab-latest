@@ -1345,11 +1345,16 @@ EOF
 	    nova.scheduler.filters.all_filters
 	crudini --set /etc/nova/nova.conf filter_scheduler enabled_filters \
 	    'RetryFilter, AvailabilityZoneFilter, RamFilter, ComputeFilter, ComputeCapabilitiesFilter, ImagePropertiesFilter, ServerGroupAntiAffinityFilter, ServerGroupAffinityFilter'
-    elif [ $OSVERSION -ge $OSTRAIN ]; then
+    elif [ $OSVERSION -ge $OSTRAIN -a $OSVERSION -lt $OSUSSURI ]; then
 	crudini --set /etc/nova/nova.conf filter_scheduler available_filters \
 	    nova.scheduler.filters.all_filters
 	crudini --set /etc/nova/nova.conf filter_scheduler enabled_filters \
 	    'RetryFilter, AvailabilityZoneFilter, ComputeFilter, ComputeCapabilitiesFilter, ImagePropertiesFilter, ServerGroupAntiAffinityFilter, ServerGroupAffinityFilter'
+    elif [ $OSVERSION -ge $OSUSSURI ]; then
+	crudini --set /etc/nova/nova.conf filter_scheduler available_filters \
+	    nova.scheduler.filters.all_filters
+	crudini --set /etc/nova/nova.conf filter_scheduler enabled_filters \
+	    'AvailabilityZoneFilter, ComputeFilter, ComputeCapabilitiesFilter, ImagePropertiesFilter, ServerGroupAntiAffinityFilter, ServerGroupAffinityFilter'
     fi
 
     if [ $OSVERSION -ge $OSKILO ]; then
@@ -2131,10 +2136,15 @@ EOF
     else
 	IMAGEVERS=""
     fi
+    if [ $OSVERSION -ge $OSSTEIN ]; then
+	VOLVERS='"volume": 3,'
+    else
+	VOLVERS='"volume": 2,'
+    fi
     cat <<EOF >> /etc/openstack-dashboard/local_settings.py
 OPENSTACK_API_VERSIONS = {
     "identity": $IDVERS,
-    "volume": 2,
+    $VOLVERS
     $IMAGEVERS
 }
 EOF
@@ -2157,11 +2167,132 @@ EOF
     # For instance, on Newton, we don't want volume creation to be the
     # default.
     #
-    if [ $OSVERSION -ge $OSNEWTON ]; then
+    if [ $OSVERSION -ge $OSNEWTON -a -e $DIRNAME/etc/horizon-${OSCODENAME}-no-default-volcreate.patch ]; then
 	# Rebuild after successfully patching javascripts.
 	patch -p0 -d / < $DIRNAME/etc/horizon-${OSCODENAME}-no-default-volcreate.patch \
 	    && $PYTHONBINNAME /usr/share/openstack-dashboard/manage.py collectstatic --noinput \
 	    && $PYTHONBINNAME /usr/share/openstack-dashboard/manage.py compress
+    fi
+
+    if [ -n "$SSLCERTTYPE" -a ! "$SSLCERTTYPE" = "none" ]; then
+	LCNFQDN=`echo $NFQDN | tr '[:upper:]' '[:lower:]'`
+	if [ "$SSLCERTTYPE" = "self" ]; then
+	    CERTPATH="/etc/ssl/easy-rsa/${NFQDN}.crt"
+	    KEYPATH="/etc/ssl/easy-rsa/${NFQDN}.key"
+	elif [ "$SSLCERTTYPE" = "letsencrypt" ]; then
+	    CERTPATH="/etc/letsencrypt/live/${LCNFQDN}/fullchain.pem"
+	    KEYPATH="/etc/letsencrypt/live/${LCNFQDN}/privkey.pem"
+	fi
+
+	cat <<EOF >/etc/apache2/sites-available/openstack-ssl.conf
+<VirtualHost *:80>
+  ServerAdmin webmaster@localhost
+  DocumentRoot /var/www/html
+  #LogLevel info ssl:warn
+  ErrorLog ${APACHE_LOG_DIR}/error.log
+  CustomLog ${APACHE_LOG_DIR}/access.log combined
+  #ServerName $NFQDN
+  <IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{HTTPS} off
+    RewriteCond %{REQUEST_URI} !^/\.well-known/
+    RewriteRule (.*) https://%{HTTP_HOST}%{REQUEST_URI}
+  </IfModule>
+  <IfModule !mod_rewrite.c>
+    Redirect / https://ctl.osz-ovs.powderteam.emulab.net
+  </IfModule>
+</VirtualHost>
+
+<VirtualHost _default_:443>
+  #ServerName $NFQDN
+  #LogLevel info ssl:warn
+  ErrorLog ${APACHE_LOG_DIR}/ssl_error.log
+  CustomLog ${APACHE_LOG_DIR}/ssl_access.log combined
+  SSLEngine On
+  SSLCertificateFile $CERTPATH
+  SSLCertificateKeyFile $KEYPATH
+  #SSLCACertificateFile
+  SetEnvIf User-Agent ".*MSIE.*" nokeepalive ssl-unclean-shutdown
+  Header add Strict-Transport-Security "max-age=15768000"
+  <Location />
+    Options None
+    AllowOverride None
+    # For Apache http server 2.4 and later:
+    #<ifVersion >= 2.4>
+      Require all granted
+    #</ifVersion>
+    # For Apache http server 2.2 and earlier:
+    #<ifVersion < 2.4>
+    #  Order allow,deny
+    #  Allow from all
+    #</ifVersion>
+  </Location>
+
+EOF
+	if [ -e /etc/apache2/conf-available/openstack-dashboard.conf ]; then
+	    cat /etc/apache2/conf-available/openstack-dashboard.conf \
+		>> /etc/apache2/sites-available/openstack-ssl.conf
+	else
+	    cat <<EOF >>/etc/apache2/sites-available/openstack-ssl.conf
+  #WSGIScriptAlias / /usr/share/openstack-dashboard/openstack_dashboard/wsgi.py
+  #WSGIDaemonProcess horizon user=www-data group=www-data processes=3 threads=10
+  #Alias /static /usr/share/openstack-dashboard/openstack_dashboard/static/
+
+  WSGIScriptAlias /horizon /usr/share/openstack-dashboard/openstack_dashboard/wsgi.py process-group=horizon
+  WSGIDaemonProcess horizon user=horizon group=horizon processes=3 threads=10 display-name=%{GROUP}
+  WSGIProcessGroup horizon
+  WSGIApplicationGroup %{GLOBAL}
+
+  Alias /static /var/lib/openstack-dashboard/static/
+  Alias /horizon/static /var/lib/openstack-dashboard/static/
+
+  <Directory /usr/share/openstack-dashboard/openstack_dashboard>
+    Require all granted
+  </Directory>
+
+  <Directory /var/lib/openstack-dashboard/static>
+    Require all granted
+  </Directory>
+EOF
+	fi
+	cat <<EOF >>/etc/apache2/sites-available/openstack-ssl.conf
+</VirtualHost>
+EOF
+
+	a2dissite 000-default
+	a2dissite default-ssl
+	a2enmod ssl
+	a2enmod rewrite
+	a2enmod headers
+	a2disconf openstack-dashboard
+	a2ensite openstack-ssl
+
+	# Have to move the cert/key so nova can access it.
+	cp -p $CERTPATH /etc/nova/cert.pem
+	cp -p $KEYPATH /etc/nova/key.pem
+	chown nova /etc/nova/cert.pem /etc/nova/key.pem
+	
+	# Reconfigure nova novncproxy
+	crudini --set /etc/nova/nova.conf DEFAULT \
+	    ssl_only true
+	crudini --set /etc/nova/nova.conf DEFAULT \
+	    cert /etc/nova/cert.pem
+	crudini --set /etc/nova/nova.conf DEFAULT \
+	    key /etc/nova/key.pem
+	service_restart nova-novncproxy
+
+	# Change the novncproxy_base_url on compute nodes
+	PHOSTS=""
+	mkdir -p $OURDIR/pssh.setup-compute-novncproxy-ssl.stdout \
+	    $OURDIR/pssh.setup-compute-novncproxy-ssl.stderr
+
+	for node in $COMPUTENODES ; do
+	    fqdn=`getfqdn $node`
+	    PHOSTS="$PHOSTS -H $fqdn"
+	done
+	$PSSH $PHOSTS -o $OURDIR/pssh.setup-compute-novncproxy-ssl.stdout \
+	    -e $OURDIR/pssh.setup-compute-novncproxy-ssl.stderr \
+	    "crudini --set /etc/nova/nova.conf vnc novncproxy_base_url 'https://${NFQDN}:6080/vnc_auto.html' && systemctl restart nova-compute"
     fi
 
     service_restart apache2
@@ -2654,7 +2785,7 @@ if [ -z "${SWIFT_PASS}" ]; then
 	fi
     fi
 
-    maybe_install_packages swift swift-proxy python-swiftclient \
+    maybe_install_packages swift swift-proxy ${PYPKGPREFIX}-swiftclient \
 	${PYPKGPREFIX}-keystoneclient ${PYPKGPREFIX}-keystonemiddleware
     # Swift still wants python2, so install some openstack client deps.
     if [ $OSVERSION -ge $OSSTEIN ]; then
@@ -2816,27 +2947,54 @@ if [ -z "${OBJECT_RING_DONE}" ]; then
     cdir=`pwd`
     cd /etc/swift
 
-    objip=`cat $OURDIR/mgmt-hosts | grep $OBJECTHOST | cut -d ' ' -f 1`
+    objip=`cat $OURDIR/mgmt-hosts | grep $OBJECTHOST | awk '{ print $1 }'`
 
     swift-ring-builder account.builder create 10 2 1
-    swift-ring-builder account.builder \
-	add r1z1-${objip}:6002/swiftv1 100
-    swift-ring-builder account.builder \
-	add r1z1-${objip}:6002/swiftv1-2 100
+    if [ $OSVERSION -lt $OSQUEENS ]; then
+	swift-ring-builder account.builder \
+	    add r1z1-${objip}:6002/swiftv1 100
+	swift-ring-builder account.builder \
+	    add r1z1-${objip}:6002/swiftv1-2 100
+    else
+	swift-ring-builder account.builder \
+	    add --region 1 --zone 1 --ip ${objip} --port 6002 \
+	    --device swiftv1 --weight 100
+	swift-ring-builder account.builder \
+	    add --region 1 --zone 1 --ip ${objip} --port 6002 \
+	    --device swiftv1-2 --weight 100
+    fi
     swift-ring-builder account.builder rebalance
 
     swift-ring-builder container.builder create 10 2 1
-    swift-ring-builder container.builder \
-	add r1z1-${objip}:6001/swiftv1 100
-    swift-ring-builder container.builder \
-	add r1z1-${objip}:6001/swiftv1-2 100
+    if [ $OSVERSION -lt $OSQUEENS ]; then
+	swift-ring-builder container.builder \
+	    add r1z1-${objip}:6001/swiftv1 100
+	swift-ring-builder container.builder \
+	    add r1z1-${objip}:6001/swiftv1-2 100
+    else
+	swift-ring-builder container.builder \
+	    add --region 1 --zone 1 --ip ${objip} --port 6001 \
+	    --device swiftv1 --weight 100
+	swift-ring-builder container.builder \
+	    add --region 1 --zone 1 --ip ${objip} --port 6001 \
+	    --device swiftv1-2 --weight 100
+    fi
     swift-ring-builder container.builder rebalance
 
     swift-ring-builder object.builder create 10 2 1
-    swift-ring-builder object.builder \
-	add r1z1-${objip}:6000/swiftv1 100
-    swift-ring-builder object.builder \
-	add r1z1-${objip}:6000/swiftv1-2 100
+    if [ $OSVERSION -lt $OSQUEENS ]; then
+	swift-ring-builder object.builder \
+  	    add r1z1-${objip}:6000/swiftv1 100
+	swift-ring-builder object.builder \
+	    add r1z1-${objip}:6000/swiftv1-2 100
+    else
+	swift-ring-builder object.builder \
+	    add --region 1 --zone 1 --ip ${objip} --port 6000 \
+	    --device swiftv1 --weight 100
+	swift-ring-builder object.builder \
+	    add --region 1 --zone 1 --ip ${objip} --port 6000 \
+	    --device swiftv1-2 --weight 100
+    fi
     swift-ring-builder object.builder rebalance
 
     chown -R swift:swift /etc/swift
@@ -2852,6 +3010,16 @@ if [ -z "${OBJECT_RING_DONE}" ]; then
 	swift-init proxy-server restart
     else
 	service_restart swift-proxy
+    fi
+    if [ $OSVERSION -ge $OSQUEENS ]; then
+	systemctl restart \
+	    swift-account swift-account-auditor \
+	    swift-account-reaper swift-account-replicator \
+	    swift-container-auditor swift-container-sharder \
+	    swift-container-reconciler swift-container-sync \
+	    swift-container-replicator swift-container-updater \
+	    swift-object swift-object-reconstructor swift-object-replicator \
+	    swift-container swift-object-auditor swift-object-updater
     fi
 
     echo "OBJECT_RING_DONE=\"1\"" >> $SETTINGS
@@ -3706,11 +3874,20 @@ EOF
     fi
 
     # Finally, dump a simple default dashboard into place.
-    AUTHSTR=`echo "import base64; import sys; sys.stdout.write(base64.b64encode('admin:$GPASSWD'));" | python`
+    if [ $ISPYTHON3 -eq 1 ]; then
+	AUTHSTR=`echo "import base64; import sys; sys.stdout.write(base64.b64encode('admin:$GPASSWD'.encode('utf8')).decode('utf8'));" | python3`
+    else
+	AUTHSTR=`echo "import base64; import sys; sys.stdout.write(base64.b64encode('admin:$GPASSWD'));" | python`
+    fi
     if [ -f $DIRNAME/etc/grafana-default-dashboard-${OSRELEASE}.json ]; then
 	curl -X POST -H 'Content-type: application/json' \
             -H "Authorization: Basic $AUTHSTR" \
 	    -d "@$DIRNAME/etc/grafana-default-dashboard-${OSRELEASE}.json" \
+	    http://localhost:3000/api/dashboards/import
+    elif [ $OSVERSION -gt $OSUSSURI ]; then
+	curl -X POST -H 'Content-type: application/json' \
+            -H "Authorization: Basic $AUTHSTR" \
+	    -d "@$DIRNAME/etc/grafana-default-dashboard-ussuri.json" \
 	    http://localhost:3000/api/dashboards/import
     else
 	curl -X POST -H 'Content-type: application/json' \
