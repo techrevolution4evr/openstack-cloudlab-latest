@@ -685,7 +685,7 @@ elif params.release == 'zed':
     image_os = 'UBUNTU22-64'
     image_tag_rel = '-Z'
 else:
-    image_os = 'UBUNTU18-64'
+    image_os = 'UBUNTU22-64'
     fromScratch = True
     doAptDistUpgrade = True
     doAptUpdate = True
