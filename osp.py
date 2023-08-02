@@ -465,7 +465,7 @@ passwdHelp = "Your OpenStack admin and instance VM password is randomly-generate
 passwdHelp += "  When logging in to the Dashboard, use the `admin` user; when logging into instance VMs, use the `ubuntu` user.  If you have selected Mitaka or newer, use 'default' as the Domain at the login prompt."
 
 grafanaInstructions = ""
-if params.release in [ "pike","queens","rocky","stein","train","ussuri","victoria","wallaby","xena","yoga","zed" ]:
+if params.release in [ "pike","queens","rocky","stein","train","ussuri","victoria","wallaby","xena","yoga","zed","antelope" ]:
     grafanaInstructions = "You can also login to [your experiment's Grafana WWW interface](http://{host-%s}:3000/d/T_62H57Zz/openstack-instance-statistics?orgId=1) and view OpenStack statistics once you've created some VMs." % (params.controllerHost)
 
 tourInstructions = \
